@@ -263,8 +263,10 @@ def create_deconvolution_df(hits, deconv_e, pos, cut_type, e_cut, n_dim):
 
     df  = pd.DataFrame(columns=['event', 'npeak', 'X', 'Y', 'Z', 'E'])
 
-    if   cut_type is CutType.abs:
-        sel_deconv = deconv_e > e_cut
+    # retain relative cut capabilities here
+    if  cut_type is CutType.abs:
+        # apply no cut, this is a janky way to get an empty mask
+        sel_deconv = deconv_e == deconv_e
     elif cut_type is CutType.rel:
         sel_deconv = deconv_e / deconv_e.max() > e_cut
     else:
@@ -292,6 +294,26 @@ def distribute_energy(df, cdst, energy_type):
     energy_type : HitEnergy with which 'type' of energy should be assigned.
     '''
     df.loc[:, 'E'] = df.E / df.E.sum() * cdst.loc[:, energy_type.value].sum()
+
+def cut_over_E(cut_type, e_cut, redist_var):
+    '''
+    Same as below, just modified to use the E, and with a pass if you want to use relative
+    cuts
+    '''
+    if cut_type is CutType.abs:
+            
+        cut = cut_and_redistribute_df(f"E > {e_cut}", redist_var)
+
+        def cut_over_E(df):
+            cdst = df.groupby(['event', 'npeak']).apply(cut).reset_index(drop=True)
+
+            return cdst
+
+        return cut_over_E
+    elif cut_type is CutType.rel:
+        return
+    else:
+        raise ValueError(f'cut_type {cut_type} is not a valid cut type.')
 
 
 def cut_over_Q(q_cut, redist_var):
@@ -477,6 +499,9 @@ def beersheba( files_in         : OneOrManyFiles
                                    args = 'hits',
                                    out  = 'deconv_dst')
 
+    cut_energy            = fl.map(cut_over_E   (deconv_params.pop("e_cut")    , ['E']),
+                                    item = 'deconv_dst')
+
     add_event_info        = fl.map(event_info_adder, args=("timestamp", "deconv_dst"), out="deconv_dst")
 
     event_count_in        = fl.spy_count()
@@ -509,6 +534,7 @@ def beersheba( files_in         : OneOrManyFiles
                                     fl.branch(write_nohits_filter)            ,
                                     events_passed_no_hits.filter              ,
                                     deconvolve_events                         ,
+                                    cut_energy                                ,
                                     add_event_info                            ,
                                     event_count_out.spy                       ,
                                     fl.branch("event_number"     ,

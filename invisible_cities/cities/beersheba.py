@@ -301,7 +301,7 @@ def cut_over_E(cut_type, e_cut, redist_var):
     cuts
     '''
     if cut_type is CutType.abs:
-            
+        
         cut = cut_and_redistribute_df(f"E > {e_cut}", redist_var)
 
         def cut_over_E(df):
@@ -311,9 +311,10 @@ def cut_over_E(cut_type, e_cut, redist_var):
 
         return cut_over_E
     elif cut_type is CutType.rel:
-        return
+        return cdst
     else:
         raise ValueError(f'cut_type {cut_type} is not a valid cut type.')
+
 
 
 def cut_over_Q(q_cut, redist_var):
@@ -499,7 +500,7 @@ def beersheba( files_in         : OneOrManyFiles
                                    args = 'hits',
                                    out  = 'deconv_dst')
 
-    cut_energy            = fl.map(cut_over_E   (deconv_params.pop("e_cut")    , ['E']),
+    cut_energy            = fl.map(cut_over_E   (deconv_params['cut_type'], deconv_params.pop("e_cut")    , ['E']),
                                     item = 'deconv_dst')
 
     add_event_info        = fl.map(event_info_adder, args=("timestamp", "deconv_dst"), out="deconv_dst")

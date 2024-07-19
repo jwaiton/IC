@@ -298,7 +298,9 @@ def distribute_energy(df, cdst, energy_type):
 def cut_over_E(cut_type, e_cut, redist_var):
     '''
     Same as below, just modified to use the E, and with a pass if you want to use relative
-    cuts
+    cuts.
+
+    REWRITE THIS!!!
     '''
     if cut_type is CutType.abs:
         
@@ -311,7 +313,11 @@ def cut_over_E(cut_type, e_cut, redist_var):
 
         return cut_over_E
     elif cut_type is CutType.rel:
-        return cdst
+        def cut_over_E_rel(df):
+            cdst = df.groupby(['event', 'npeak']).reset_index(drop=True)
+            return cdst
+
+        return cut_over_E_rel(df):
     else:
         raise ValueError(f'cut_type {cut_type} is not a valid cut type.')
 

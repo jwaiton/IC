@@ -127,6 +127,9 @@ def deconvolve_signal(det_db          : pd.DataFrame,
                       iteration_tol   : float,
                       sample_width    : List[float],
                       bin_size        : List[float],
+                      satellite_iter  : int,
+                      satellite_dist  : int,
+                      satellite_size  : int,
                       diffusion       : Optional[Tuple[float, float, float]]=(1., 1., 0.3),
                       energy_type     : Optional[HitEnergy]=HitEnergy.Ec,
                       deconv_mode     : Optional[DeconvolutionMode]=DeconvolutionMode.joint,
@@ -148,6 +151,9 @@ def deconvolve_signal(det_db          : pd.DataFrame,
     iteration_tol   : Stopping threshold (difference between iterations).
     sample_width    : Sampling size of the sensors.
     bin_size        : Size of the interpolated bins.
+    satellite_iter  : Number of iterations to wait until applying the satellite killer.
+    satellite_dist  : Minimum distance between clouds that signify a satellite.
+    satellite_size  : Minimum cloud size (below this, will be removed).
     energy_type     : Energy type (`E` or `Ec`, see Esmeralda) used for assignment.
     deconv_mode     : `joint` or `separate`, 1 or 2 step deconvolution, see description later.
     diffusion       : Diffusion coefficients in each dimension for 'separate' mode.
@@ -201,7 +207,17 @@ def deconvolve_signal(det_db          : pd.DataFrame,
         psf = psfs.loc[(psfs.z == find_nearest(psfs.z, zz)) &
                        (psfs.x == find_nearest(psfs.x, xx)) &
                        (psfs.y == find_nearest(psfs.y, yy)) , :]
-        deconv_image, pos = deconvolution(tuple(df.loc[:, dimensions].values.T), df.NormQ.values, psf)
+
+        #relevant_z_slice = 272.41895625000006
+        # this is an explicit test for looking at particular slices
+        #if (z == relevant_z_slice):
+        #    z_flag = True
+        #else:
+        #    z_flag = False
+        #### NOTE DEFINE PRINTABILITY HERE
+        z_flag = True
+        
+        deconv_image, pos = deconvolution(tuple(df.loc[:, dimensions].values.T), df.NormQ.values, psf, satellite_iter, satellite_dist, satellite_size, e_cut, z_flag, cut_type)
 
         if   deconv_mode is DeconvolutionMode.joint:
             pass
@@ -263,9 +279,8 @@ def create_deconvolution_df(hits, deconv_e, pos, cut_type, e_cut, n_dim):
 
     df  = pd.DataFrame(columns=['event', 'npeak', 'X', 'Y', 'Z', 'E'])
 
-    # retain relative cut capabilities here
-    if  cut_type is CutType.abs:
-        # apply no cut, this is a janky way to get an empty mask
+    if   cut_type is CutType.abs:
+        #sel_deconv = deconv_e > e_cut
         sel_deconv = deconv_e == deconv_e
     elif cut_type is CutType.rel:
         sel_deconv = deconv_e / deconv_e.max() > e_cut
@@ -295,33 +310,6 @@ def distribute_energy(df, cdst, energy_type):
     '''
     df.loc[:, 'E'] = df.E / df.E.sum() * cdst.loc[:, energy_type.value].sum()
 
-def cut_over_E(cut_type, e_cut, redist_var):
-    '''
-    Same as below, just modified to use the E, and with a pass if you want to use relative
-    cuts.
-
-    REWRITE THIS!!!
-    '''
-    if cut_type is CutType.abs:
-        
-        cut = cut_and_redistribute_df(f"E > {e_cut}", redist_var)
-
-        def cut_over_E(df):
-            cdst = df.groupby(['event', 'npeak']).apply(cut).reset_index(drop=True)
-
-            return cdst
-
-        return cut_over_E
-    elif cut_type is CutType.rel:
-        def cut_over_E_rel(df):
-            cdst = df.groupby(['event', 'npeak']).reset_index(drop=True)
-            return cdst
-
-        return cut_over_E_rel(df):
-    else:
-        raise ValueError(f'cut_type {cut_type} is not a valid cut type.')
-
-
 
 def cut_over_Q(q_cut, redist_var):
     '''
@@ -346,6 +334,24 @@ def cut_over_Q(q_cut, redist_var):
         return cdst
 
     return cut_over_Q
+
+def cut_over_E(cut_type, e_cut, redist_var):
+    '''
+    Same as below, just modified to use the E, and with a pass if you want to use relative
+    cuts.
+
+    REWRITE THIS!!!
+    '''
+    if cut_type is CutType.abs:
+        
+        cut = cut_and_redistribute_df(f"E > {e_cut}", redist_var)
+
+        def cut_over_E(df):
+            cdst = df.groupby(['event', 'npeak']).apply(cut).reset_index(drop=True)
+
+            return cdst
+
+        return cut_over_E
 
 
 def drop_isolated(distance, redist_var):
@@ -448,6 +454,12 @@ def beersheba( files_in         : OneOrManyFiles
             Sampling of the sensors in each dimension (usuallly the pitch).
         bin_size       : list[float]
             Bin size (mm) of the deconvolved image.
+        satellite_iter : int
+            Number of iterations to wait until applying the satellite killer.
+        satellite_dist : int
+            Minimum distance between clouds that signify a satellite.
+        satellite_size : int
+            Minimum cloud size (below this value, clouds will be removed).
         energy_type    : HitEnergy (`E` or `Ec`)
             Marks which energy from Esmeralda (E = uncorrected, Ec = corrected)
             should be assigned to the deconvolved track.
@@ -495,6 +507,9 @@ def beersheba( files_in         : OneOrManyFiles
     if deconv_params['n_dim'] > 2:
         raise     NotImplementedError(f"{deconv_params['n_dim']}-dimensional PSF not yet implemented")
 
+    cut_energy            = fl.map(cut_over_E   (deconv_params["cut_type"], deconv_params["e_cut"]   , ['E']),
+                                    item = 'deconv_dst')
+
     cut_sensors           = fl.map(cut_over_Q   (deconv_params.pop("q_cut")    , ['E', 'Ec']),
                                    item = 'hits')
     drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec']),
@@ -505,9 +520,6 @@ def beersheba( files_in         : OneOrManyFiles
     deconvolve_events     = fl.map(deconvolve_signal(DataSiPM(detector_db, run_number), **deconv_params),
                                    args = 'hits',
                                    out  = 'deconv_dst')
-
-    cut_energy            = fl.map(cut_over_E   (deconv_params['cut_type'], deconv_params.pop("e_cut")    , ['E']),
-                                    item = 'deconv_dst')
 
     add_event_info        = fl.map(event_info_adder, args=("timestamp", "deconv_dst"), out="deconv_dst")
 

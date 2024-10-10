@@ -13,8 +13,14 @@ from . io   .  hits_io   import load_hits
 from . io   .  hits_io   import load_hits_skipping_NN
 from . io   .mcinfo_io   import load_mchits_df
 from . types.ic_types    import NN
-from . types.symbols     import ALL_SYMBOLS
-
+from . types.symbols     import XYReco
+from . types.symbols     import RebinMethod
+from . types.symbols     import HitEnergy
+from . types.symbols     import DeconvolutionMode
+from . types.symbols     import CutType
+from . types.symbols     import SiPMCharge
+from . types.symbols     import InterpolationMethod
+from . types.symbols     import NormStrategy
 
 tbl_data = namedtuple('tbl_data', 'filename group node')
 dst_data = namedtuple('dst_data', 'file_info config read true')
@@ -805,12 +811,14 @@ def beersheba_config(Th228_hits, PSFDIR, next100_mc_krmap):
                                        , bin_size      = [ 1.,  1.]
                                        , diffusion     = (1.0, 0.2)
                                        , n_dim         = 2
-                                       , energy_type   = ALL_SYMBOLS['Ec']
-                                       , deconv_mode   = ALL_SYMBOLS['joint']
-                                       , cut_type      = ALL_SYMBOLS[  'abs']
-                                       , inter_method  = ALL_SYMBOLS['cubic'])
-                 , corrections_file = next100_mc_krmap
-                 , apply_temp       = False )
+                                       , energy_type   = HitEnergy.Ec
+                                       , deconv_mode   = DeconvolutionMode.joint
+                                       , cut_type      = CutType.abs
+                                       , inter_method  = InterpolationMethod.cubic)
+                 , satellite_params = None
+                 , corrections   = dict( filename   = next100_mc_krmap
+                                       , apply_temp = False
+                                       , norm_strat = NormStrategy.kr))
     return config
 
 

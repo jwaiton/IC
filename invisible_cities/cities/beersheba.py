@@ -61,8 +61,9 @@ from .. core.configure         import EventRangeType
 from .. core.configure         import OneOrManyFiles
 from .. core.configure         import check_annotations
 
-from .. reco                   import tbl_functions           as tbl
-from .. dataflow               import dataflow                as fl
+from .. core                   import system_of_units as units
+from .. reco                   import tbl_functions   as tbl
+from .. dataflow               import dataflow        as fl
 
 from .. dataflow.dataflow      import push
 from .. dataflow.dataflow      import pipe
@@ -87,7 +88,11 @@ from .. types.symbols          import InterpolationMethod
 from .. types.symbols          import CutType
 from .. types.symbols          import DeconvolutionMode
 
-from .. core                   import system_of_units as units
+
+from typing import Tuple
+from typing import List
+from typing import Optional
+from typing import Union
 
 
 # Temporary. The removal of the event model will fix this.

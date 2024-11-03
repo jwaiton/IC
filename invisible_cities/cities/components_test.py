@@ -14,8 +14,13 @@ from pytest import warns
 from .. core.exceptions    import InvalidInputFileStructure
 from .. core.testing_utils import    assert_tables_equality
 from .. core               import system_of_units as units
+from .. evm.event_model    import Cluster
+from .. evm.event_model    import Hit
+from .. evm.event_model    import HitCollection
+from .. types.ic_types     import xy
 from .. types.symbols      import WfType
 from .. types.symbols      import EventRange as ER
+from .. types.symbols      import NormStrategy
 from .. types.symbols      import XYReco
 
 from .  components import event_range
@@ -29,6 +34,9 @@ from .  components import hits_and_kdst_from_files
 from .  components import mcsensors_from_file
 from .  components import create_timestamp
 from .  components import check_max_time
+from .  components import hits_corrector
+from .  components import write_city_configuration
+from .  components import copy_cities_configuration
 
 from .. dataflow   import dataflow as fl
 
@@ -318,3 +326,122 @@ def test_check_max_time_units():
     with raises(ValueError):
         check_max_time(max_time, buffer_length)
 
+def test_read_wrong_pmt_ids(ICDATADIR):
+    """
+    The input file of this test contains sensor IDs that are not present in the database.
+    This should raise an error and this test check that it is actually raised.
+    """
+    file_in    = os.path.join(ICDATADIR, "nexus_next100_full_wrong_PMT_IDs.h5")
+    run_number = 0
+    rate       = 0.5
+
+    sns_gen = mcsensors_from_file([file_in], 'next100', run_number, rate)
+    with raises(SensorIDMismatch):
+        next(sns_gen)
+
+
+@mark.parametrize( "norm_strat norm_value".split(),
+                  ( (NormStrategy.kr    , None) # None marks the default value
+                  , (NormStrategy.max   , None)
+                  , (NormStrategy.mean  , None)
+                  , (NormStrategy.custom,  1e3)
+                  ))
+@mark.parametrize("apply_temp", (False, True))
+def test_hits_corrector_valid_normalization_options( correction_map_filename
+                                                   , norm_strat
+                                                   , norm_value
+                                                   , apply_temp ):
+    n  = 50
+    xs = np.random.uniform(-10, 10, n)
+    ys = np.random.uniform(-10, 10, n)
+    zs = np.random.uniform( 10, 50, n)
+
+    hits = []
+    for i, x, y, z in zip(range(n), xs, ys, zs):
+        c = Cluster(0, xy(x, y), xy.zero(), 1)
+        h = Hit(i, c, z, 1, xy.zero(), 0)
+        hits.append(h)
+
+    hc = HitCollection(0, 1, hits)
+
+    correct     = hits_corrector(correction_map_filename, apply_temp, norm_strat, norm_value)
+    corrected_e = np.array([h.Ec for h in correct(hc).hits])
+
+    assert not np.any(np.isnan(corrected_e) )
+    assert     np.all(         corrected_e>0)
+
+
+@mark.parametrize( "norm_strat norm_value".split(),
+                  ( (NormStrategy.kr    ,    0) # 0 doens't count as "not given"
+                  , (NormStrategy.max   ,    0)
+                  , (NormStrategy.mean  ,    0)
+                  , (NormStrategy.kr    ,    1) # any other value must not be given either
+                  , (NormStrategy.max   ,    1)
+                  , (NormStrategy.mean  ,    1)
+                  , (NormStrategy.custom, None) # with custom, `norm_value` must be given ...
+                  , (NormStrategy.custom,    0) # ... but not 0
+                  ))
+def test_hits_corrector_invalid_normalization_options_raises( correction_map_filename
+                                                            , norm_strat
+                                                            , norm_value):
+    with raises(ValueError):
+        hits_corrector(correction_map_filename, False, norm_strat, norm_value)
+
+
+def test_write_city_configuration(config_tmpdir):
+    filename  = os.path.join(config_tmpdir, "test_write_configuration.h5")
+    city_name = "acity"
+    args      = dict(
+        a = 1,
+        b = 2.3,
+        c = "a_string",
+        d = "two strings".split(),
+        e = [1,2,3],
+        f = np.linspace(0, 1, 5),
+    )
+    write_city_configuration(filename, city_name, args)
+    with tb.open_file(filename, "r") as file:
+        assert "config"  in file.root
+        assert city_name in file.root.config
+
+    df = pd.read_hdf(filename, "/config/" + city_name).set_index("variable")
+    for var, value in args.items():
+        assert var in df.index
+        assert str(value) == df.value.loc[var]
+
+
+def test_copy_cities_configuration(config_tmpdir):
+    filename1  = os.path.join(config_tmpdir, "test_copy_cities_configuration_1.h5")
+    filename2  = os.path.join(config_tmpdir, "test_copy_cities_configuration_2.h5")
+    city_name1 = "acity"
+    city_name2 = "bcity"
+    args       = dict(
+        a = 1,
+        b = 2.3,
+        c = "a_string",
+    )
+    write_city_configuration(filename1, city_name1, args)
+    write_city_configuration(filename2, city_name2, args)
+
+    copy_cities_configuration(filename1, filename2)
+    with tb.open_file(filename2, "r") as file:
+        assert "config"   in file.root
+        assert city_name1 in file.root.config
+        assert city_name2 in file.root.config
+
+    df1 = pd.read_hdf(filename1, "/config/" + city_name1).set_index("variable")
+    df2 = pd.read_hdf(filename2, "/config/" + city_name2).set_index("variable")
+    for var, value in args.items():
+        assert var in df1.index
+        assert var in df2.index
+        assert str(value) == df1.value.loc[var]
+        assert str(value) == df2.value.loc[var]
+
+
+def test_copy_cities_configuration_warns_when_nothing_to_copy(ICDATADIR, config_tmpdir):
+    # any file without config group will do
+    filename1  = os.path.join(    ICDATADIR, "electrons_40keV_z25_RWF.h5")
+    filename2  = os.path.join(config_tmpdir, "test_copy_cities_configuration_warns.h5")
+
+    with warns(UserWarning, match="Input file does not contain /config group"):
+        copy_cities_configuration(filename1, filename2)

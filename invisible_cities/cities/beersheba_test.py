@@ -6,6 +6,7 @@ import pandas as pd
 
 from pytest                import mark
 from pytest                import raises
+from pytest                import fixture
 
 from .. core               import system_of_units as units
 from .. io                 import dst_io      as dio
@@ -18,6 +19,52 @@ from .. core.testing_utils import ignore_warning
 from .. types.symbols      import HitEnergy
 from .. types.symbols      import DeconvolutionMode
 from .. types.symbols      import CutType
+from .. types.symbols      import InterpolationMethod
+from .. types.symbols      import NormStrategy
+
+
+@fixture(scope='function')
+def beersheba_config_separate(beersheba_config):
+    beersheba_config["deconv_params"].update(dict( deconv_mode    = DeconvolutionMode.separate
+                                                 , n_iterations   = 50
+                                                 , n_iterations_g = 50))
+
+    return beersheba_config
+
+
+@fixture(scope = 'session')
+def PSFDIR(ICDATADIR):
+    return os.path.join(ICDATADIR, "NEXT100_PSF_kr83m.h5")
+
+@fixture(scope='function')
+def beersheba_config(Th228_hits, PSFDIR, next100_mc_krmap):
+    config = dict( files_in      = Th228_hits
+                 , event_range   = 80
+                 , compression   = 'ZLIB4'
+                 , detector_db   = "next100"
+                 , print_mod     = 1
+                 , run_number    = 0
+                 , threshold     = 5 * units.pes
+                 , same_peak     = True
+                 , deconv_params = dict( q_cut         = 10
+                                       , drop_dist     = [16.0] * 2
+                                       , psf_fname     = PSFDIR
+                                       , e_cut         = 12e-3
+                                       , n_iterations  = 100
+                                       , iteration_tol = 1e-10
+                                       , sample_width  = [15.55] * 2
+                                       , bin_size      = [ 1.,  1.]
+                                       , diffusion     = (1.0, 0.2)
+                                       , n_dim         = 2
+                                       , energy_type   = HitEnergy.Ec
+                                       , deconv_mode   = DeconvolutionMode.joint
+                                       , cut_type      = CutType.abs
+                                       , inter_method  = InterpolationMethod.cubic)
+                 , satellite_params = None
+                 , corrections   = dict( filename   = next100_mc_krmap
+                                       , apply_temp = False
+                                       , norm_strat = NormStrategy.kr))
+    return config
 
 
 def test_create_deconvolution_df(ICDATADIR):

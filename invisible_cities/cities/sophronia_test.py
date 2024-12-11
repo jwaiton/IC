@@ -2,12 +2,74 @@ import os
 import tables as tb
 
 from pytest import mark
+from pytest import fixture
 
+
+from .. core                 import system_of_units as units
 from .. core.testing_utils   import assert_tables_equality
 from .. core.testing_utils   import ignore_warning
 from .. core.system_of_units import pes
 from .  sophronia            import sophronia
+from .. types.symbols        import RebinMethod
+from .. types.symbols        import SiPMCharge
+from .. types.symbols        import XYReco
+from .. types.symbols        import NormStrategy
 
+
+
+
+@fixture(scope="session")
+def Th228_pmaps(ICDATADIR):
+    filename = "228Th_10evt_pmaps.h5"
+    filename = os.path.join(ICDATADIR, filename)
+    return filename
+
+@fixture(scope="function")
+def sophronia_config(Th228_pmaps, next100_mc_krmap):
+    config   = dict( files_in    = Th228_pmaps
+                   , compression = "ZLIB4"
+                   , event_range = 10
+                   , run_number  = 0
+                   , detector_db = "next100"
+                   , print_mod   = 1
+                   , drift_v     = 0.84 * units.mm / units.mus
+                   , s1_params   = dict(
+                        s1_nmin     =    1            ,
+                        s1_nmax     =    5            ,
+                        s1_emin     =    5 * units.pes,
+                        s1_emax     =  1e4 * units.pes,
+                        s1_wmin     =   75 * units.ns ,
+                        s1_wmax     =    2 * units.mus,
+                        s1_hmin     =    2 * units.pes,
+                        s1_hmax     =  1e4 * units.pes,
+                        s1_ethr     =    0 * units.pes,
+                   )
+                   , s2_params   = dict(
+                        s2_nmin     =    1            ,
+                        s2_nmax     =    5            ,
+                        s2_emin     =  1e2 * units.pes,
+                        s2_emax     =  1e9 * units.pes,
+                        s2_wmin     =  0.5 * units.mus,
+                        s2_wmax     =  1e3 * units.ms ,
+                        s2_hmin     =  1e2 * units.pes,
+                        s2_hmax     =  1e9 * units.pes,
+                        s2_nsipmmin =    1            ,
+                        s2_nsipmmax = 3000            ,
+                        s2_ethr     =    0 * units.pes,
+                   )
+                   , rebin              = 1
+                   , rebin_method       = RebinMethod.stride
+                   , sipm_charge_type   = SiPMCharge.raw
+                   , q_thr              = 5 * units.pes
+                   , global_reco_algo   = XYReco.barycenter
+                   , global_reco_params = dict(Qthr = 20 * units.pes)
+                   , same_peak          = True
+                   , corrections        = dict(
+                       filename   = next100_mc_krmap,
+                       apply_temp =            False,
+                       norm_strat =  NormStrategy.kr)
+                   )
+    return config
 
 @ignore_warning.no_config_group
 def test_sophronia_runs(sophronia_config, config_tmpdir):

@@ -4,6 +4,7 @@ from collections import defaultdict
 
 from pytest import mark
 from pytest import approx
+from pytest import fixture
 
 from hypothesis import given
 from hypothesis import strategies as stg
@@ -20,6 +21,48 @@ from ..evm .pmaps         import S2
 from ..evm .pmaps_test    import pmaps    as pmap_gen
 from .                    import pmaps_io as pmpio
 
+pmp_data = namedtuple('pmp_data', 's1 s2 si')
+pmp_dfs  = namedtuple('pmp_dfs' , 's1 s2 si, s1pmt, s2pmt')
+
+
+def _get_pmaps_dict_and_event_numbers(filename):
+    dict_pmaps = pmpio.load_pmaps(filename)
+
+    def peak_contains_sipms(s2 ): return bool(s2.sipms.ids.size)
+    def  evt_contains_sipms(evt): return any (map(peak_contains_sipms, dict_pmaps[evt].s2s))
+    def  evt_contains_s1s  (evt): return bool(dict_pmaps[evt].s1s)
+    def  evt_contains_s2s  (evt): return bool(dict_pmaps[evt].s2s)
+
+    s1_events  = tuple(filter(evt_contains_s1s  , dict_pmaps))
+    s2_events  = tuple(filter(evt_contains_s2s  , dict_pmaps))
+    si_events  = tuple(filter(evt_contains_sipms, dict_pmaps))
+
+    return dict_pmaps, pmp_data(s1_events, s2_events, si_events)
+
+
+@fixture(scope='session')
+def KrMC_pmaps_without_ipmt_filename(ICDATADIR):
+    test_file = "dst_NEXT_v1_00_05_Kr_ACTIVE_0_0_7bar_PMP_10evt_new_wo_ipmt.h5"
+    test_file = os.path.join(ICDATADIR, test_file)
+    return test_file
+
+
+@fixture(scope='session')
+def KrMC_pmaps_dfs(KrMC_pmaps_filename):
+    s1df, s2df, sidf, s1pmtdf, s2pmtdf = pmpio.load_pmaps_as_df(KrMC_pmaps_filename)
+    return pmp_dfs(s1df, s2df, sidf, s1pmtdf, s2pmtdf)
+
+
+@fixture(scope='session')
+def KrMC_pmaps_without_ipmt_dfs(KrMC_pmaps_without_ipmt_filename):
+    s1df, s2df, sidf, s1pmtdf, s2pmtdf = pmpio.load_pmaps_as_df(KrMC_pmaps_without_ipmt_filename)
+    return pmp_dfs(s1df, s2df, sidf, s1pmtdf, s2pmtdf)
+
+
+@fixture(scope='session')
+def KrMC_pmaps_dict(KrMC_pmaps_filename):
+    dict_pmaps, evt_numbers = _get_pmaps_dict_and_event_numbers(KrMC_pmaps_filename)
+    return dict_pmaps, evt_numbers
 
 pmaps_data = namedtuple("pmaps_data", """evt_numbers      peak_numbers
                                          evt_numbers_pmt  peak_numbers_pmt

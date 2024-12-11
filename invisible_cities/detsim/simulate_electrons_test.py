@@ -1,3 +1,5 @@
+import os
+
 import numpy  as np
 
 from collections import namedtuple
@@ -11,6 +13,11 @@ from .. io.mcinfo_io import load_mchits_df
 from . simulate_electrons import generate_ionization_electrons
 from . simulate_electrons import drift_electrons
 from . simulate_electrons import diffuse_electrons
+
+@fixture(scope  = 'session',
+                params = ['Kr83_nexus_v5_03_00_ACTIVE_7bar_3evts.MCRD.h5'])
+def krypton_MCRD_file(request, ICDATADIR):
+    return os.path.join(ICDATADIR, request.param)
 
 @fixture(scope="session")
 def MChits_and_detsim_params(krypton_MCRD_file):

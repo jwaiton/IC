@@ -4,6 +4,8 @@ import pytest
 
 from os.path import join
 
+from collections import namedtuple
+
 import numpy  as np
 import pandas as pd
 
@@ -11,6 +13,18 @@ from pytest  import fixture
 from pytest  import mark
 
 from . import load_db as DB
+
+db_data  = namedtuple('db_data', 'detector npmts nsipms feboxes nfreqs')
+
+@fixture(scope='session',
+                params=[db_data('demopp' ,  3,  256, 3, 79),
+                        db_data('new'    , 12, 1792, 3, 79),
+                        db_data('next100', 60, 3584, 0, 0),
+                        db_data('flex100', 60, 3093, 0, 0)],
+               ids=["demo", "new", "next100", "flex100"])
+def db(request):
+    return request.param
+
 
 def test_pmts_pd(db):
     """Check that we retrieve the correct number of PMTs."""

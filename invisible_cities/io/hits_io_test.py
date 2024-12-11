@@ -3,6 +3,8 @@ import numpy  as np
 import tables as tb
 import time   as tm
 
+from pytest import fixture
+
 from numpy.testing import assert_allclose
 
 from . dst_io              import load_dst
@@ -12,7 +14,42 @@ from .. evm.event_model    import Hit
 from .. evm.event_model    import HitCollection
 from .  hits_io            import hits_writer
 from .  hits_io            import load_hits
+from .  hits_io            import load_hits_skipping_NN
 from .. types.ic_types     import NN
+
+@fixture(scope='session')
+def TlMC_hits(ICDATADIR):
+    hits_file_name = "dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5"
+    hits_file_name = os.path.join(ICDATADIR, hits_file_name)
+    hits = load_hits(hits_file_name)
+    return hits
+
+
+@fixture(scope='session')
+def TlMC_hits_skipping_NN(ICDATADIR):
+    hits_file_name = "dst_NEXT_v1_00_05_Tl_ACTIVE_100_0_7bar_DST_10.h5"
+    hits_file_name = os.path.join(ICDATADIR, hits_file_name)
+    hits = load_hits_skipping_NN(hits_file_name)
+    return hits
+
+@fixture(scope='session')
+def hits_toy_data(ICDATADIR):
+    npeak  = np.array   ([0]*25 + [1]*30 + [2]*35 + [3]*10)
+    nsipm  = np.arange  (1000, 1100)
+    x      = np.linspace( 150,  250, 100)
+    y      = np.linspace(-280, -180, 100)
+    xrms   = np.linspace(   1,   80, 100)
+    yrms   = np.linspace(   2,   40, 100)
+    z      = np.linspace(   0,  515, 100)
+    q      = np.linspace( 1e3,  1e3, 100)
+    e      = np.linspace( 2e3,  1e4, 100)
+    x_peak = np.array([(x * e).sum() / e.sum()] * 100)
+    y_peak = np.array([(y * e).sum() / e.sum()] * 100)
+
+    hits_filename = os.path.join(ICDATADIR, "toy_hits.h5")
+    return hits_filename, (npeak, nsipm, x, y, xrms, yrms, z, q, e, x_peak, y_peak)
+
+
 
 def test_load_hits_load_events(TlMC_hits):
     hits = TlMC_hits

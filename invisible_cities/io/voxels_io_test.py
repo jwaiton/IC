@@ -4,10 +4,25 @@ import numpy  as np
 
 from numpy.testing import assert_allclose
 
+from pytest import fixture
+
 from .. evm.event_model import Voxel
 from .. evm.event_model import VoxelCollection
 from .  voxels_io       import true_voxels_writer
 from .  voxels_io       import load_voxels
+
+@fixture(scope='session')
+def voxels_toy_data(ICDATADIR):
+    event = np.zeros(100)
+    X     = np.linspace( 150,  250, 100)
+    Y     = np.linspace(-280, -180, 100)
+    Z     = np.linspace(   0,  100, 100)
+    E     = np.linspace( 1e3,  1e3, 100)
+    size  = np.reshape(np.repeat([10,10,10],100),(100,3))
+
+    voxels_filename = os.path.join(ICDATADIR, "toy_voxels.h5")
+    return voxels_filename, (event, X, Y, Z, E, size)
+
 
 def test_true_voxels_writer(config_tmpdir, voxels_toy_data):
 

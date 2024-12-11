@@ -4,12 +4,42 @@ import numpy  as np
 import tables as tb
 
 from pytest import mark
+from pytest import fixture
 
 from .. core                 import system_of_units as units
 from .. io                   import dst_io      as dio
 from .  esmeralda            import esmeralda
 from .. core.testing_utils   import assert_tables_equality
 from .. core.testing_utils   import ignore_warning
+from .. types.symbols        import NormStrategy
+
+
+
+@fixture(scope="function")
+def esmeralda_config(Th228_hits, next100_mc_krmap):
+    config = dict( files_in    = Th228_hits
+                 , compression = "ZLIB4"
+                 , event_range = 8
+                 , run_number  = 0
+                 , detector_db = "next100"
+                 , print_mod   = 1
+                 , threshold   = 30 * units.pes
+                 , same_peak   = True
+                 , fiducial_r  = 474 * units.mm
+                 , paolina_params  = dict(
+                      vox_size         = [15 * units.mm] * 3,
+                      strict_vox_size  = True               ,
+                      energy_threshold = 20 * units.keV     ,
+                      min_voxels       = 3                  ,
+                      blob_radius      = 21 * units.mm      ,
+          	      max_num_hits     = 30000              )
+                 , corrections = dict(
+                      filename   = next100_mc_krmap,
+                      apply_temp =            False,
+                      norm_strat =  NormStrategy.kr)
+                 )
+
+    return config
 
 
 @ignore_warning.no_config_group

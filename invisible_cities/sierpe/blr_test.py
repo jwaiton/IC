@@ -1,3 +1,5 @@
+import os
+
 from collections import namedtuple
 
 import numpy  as np
@@ -14,6 +16,11 @@ from .        import blr
 deconv_params = namedtuple("deconv_params",
                            "coeff_clean coeff_blr "
                            "thr_trigger accum_discharge_length")
+
+
+@fixture(scope='session')
+def example_blr_wfs_filename(ICDATADIR):
+    return os.path.join(ICDATADIR, "blr_examples.h5")
 
 
 @fixture(scope="session")

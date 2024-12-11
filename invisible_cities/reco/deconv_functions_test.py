@@ -38,7 +38,19 @@ from .. database.load_db          import DataSiPM
 from scipy.stats                  import multivariate_normal
 
 
-@pytest.fixture(scope='function')
+@fixture(scope='session')
+def data_hdst(ICDATADIR):
+    test_file = "test_hits_th_1pes.h5"
+    test_file = os.path.join(ICDATADIR, test_file)
+    return test_file
+
+@fixture(scope='session')
+def data_hdst_deconvolved(ICDATADIR):
+    test_file = "test_hits_th_1pes_deconvolution.npz"
+    test_file = os.path.join(ICDATADIR, test_file)
+    return test_file
+
+@fixture(scope='function')
 def sat_arr(ICDATADIR):
     '''
     An array made to imitate a z-slice that would be passed through deconvolution
@@ -51,7 +63,7 @@ def sat_arr(ICDATADIR):
     return arr
 
 
-@pytest.fixture(scope='session')
+@fixture(scope='session')
 def compsize_array(ICDATADIR):
     '''
     An array made to imitate a z-slice that would be passed through deconvolution

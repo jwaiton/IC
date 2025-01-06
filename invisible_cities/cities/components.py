@@ -1356,13 +1356,21 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
             vox_size_z = voxels[0].size[2]
             del(voxels)
 
+            numb_of_tracks = len(tracks)
+
+            # calculate distance between tracks
+            if numb_of_tracks > 1:
+                min_track_sep = plf.calculate_shortest_distance(tracks)
+            # if no secondary tracks, set distance to stupid high. Find better solution
+            elif numb_of_tracks == 1:
+                min_track_sep == 9999999
+
             track_hits = []
             for c, t in enumerate(tracks, 0):
                 tID = c
                 energy = plf.get_track_energy(t)
                 numb_of_hits   = len([h for vox in t.nodes() for h in vox.hits])
                 numb_of_voxels = len(t.nodes())
-                numb_of_tracks = len(tracks   )
                 pos   = [h.pos for v in t.nodes() for h in v.hits]
                 x, y, z = map(np.array, zip(*pos))
                 r = np.sqrt(x**2 + y**2)
@@ -1384,7 +1392,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                                 *ave_pos, ave_r, *extr1_pos,
                                 *extr2_pos, *blob_pos1, *blob_pos2,
                                 e_blob1, e_blob2, overlap,
-                                vox_size_x, vox_size_y, vox_size_z]
+                                vox_size_x, vox_size_y, vox_size_z, min_track_sep]
 
                 df.loc[c] = list_of_vars
 

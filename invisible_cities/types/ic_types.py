@@ -140,4 +140,5 @@ types_dict_tracks = OrderedDict({'event'           : np.int64  , 'trackID'      
                                  'blob1_z'         : np.float64, 'blob2_x'       : np.float64, 'blob2_y'     : np.float64,
                                  'blob2_z'         : np.float64, 'eblob1'        : np.float64, 'eblob2'      : np.float64,
                                  'ovlp_blob_energy': np.float64,
-                                 'vox_size_x'      : np.float64, 'vox_size_y'    : np.float64, 'vox_size_z'  : np.float64})
+                                 'vox_size_x'      : np.float64, 'vox_size_y'    : np.float64, 'vox_size_z'  : np.float64,
+                                 'min_track_sep'   : np.float64})

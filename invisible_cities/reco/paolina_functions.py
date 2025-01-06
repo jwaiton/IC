@@ -378,3 +378,41 @@ def drop_end_point_voxels(voxels           : Sequence[Voxel],
 
 def get_track_energy(track):
     return sum([vox.Ehits for vox in track.nodes()])
+
+
+
+# Function to calculate pairwise distances
+def pairwise(xyz1, xyz2):
+    # subtracts the two arrays from one another, with a new axis for xyz1
+    # then applies the linalg across the 2nd axis (within each xyz component wrt
+    # every other xyz component
+    return np.linalg.norm(xyz1[:, np.newaxis] - xyz2, axis=2)
+
+
+
+def calculate_shortest_distance(tracks):
+    # collect voxel positions
+    voxel_pos = []
+    for c, t in enumerate(tracks, 0):
+        vox_pos_list = []
+        for node in t.nodes():
+            vox_pos_list.append(node.voxelpos)
+        # create track dictionary related to the enumeration containing the positions
+        voxel_pos.append(np.array(vox_pos_list))
+
+    # go through all combinations of the different tracks wrt one another using combinations
+    # this could take a long time for many tracks! Be careful!
+    shortest_distance = None
+    for (i, xyz1), (j, xyz2) in combinations(enumerate(voxel_pos), 2):
+        distances = pairwise(xyz1, xyz2)
+        # calculate shortest distance
+        local_short_distance = np.min(distances)
+        if shortest_distance == None:
+            print(f"New shortest distance: {local_short_distance}")
+            shortest_distance = local_short_distance
+        else:
+            if local_short_distance < shortest_distance:
+                print(f"New shortest distance: {local_short_distance}")
+                shortest_distance = local_short_distance
+
+    return shortest_distance

@@ -96,6 +96,7 @@ class Voxel(BHit):
         self._size  = size
         self.hits   = hits if hits is not None else []
         self.e_type = e_type.value
+        self.xyz = (x,y,z)
 
     @property
     def size(self): return self._size
@@ -105,6 +106,9 @@ class Voxel(BHit):
 
     @property
     def Etype(self): return self.e_type
+
+    @property
+    def voxelpos(self): return self.xyz
 
 
 class Cluster(BHit):

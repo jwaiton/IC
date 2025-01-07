@@ -1363,7 +1363,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                 min_track_sep = plf.calculate_shortest_distance(tracks)
             # if no secondary tracks, set distance to stupid high. Find better solution
             elif numb_of_tracks == 1:
-                min_track_sep == 9999999
+                min_track_sep = 9999999
 
             track_hits = []
             for c, t in enumerate(tracks, 0):

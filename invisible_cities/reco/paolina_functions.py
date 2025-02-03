@@ -258,10 +258,16 @@ def hits_in_blob(track_graph : Graph,
     return blob_hits
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(track_graph : Graph, radius : float, fixed_b1 : bool) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        For each pair of observables, the one of the blob of largest energy is returned first."""
-    distances = shortest_paths(track_graph)
+
+    # check for highest blob method first
+    if fixed_b1:
+        node_blob1 = find_highest_energy_node(track_graph)
+        distances = shortest_paths(track_graph, fixed_b1, node_blob1)
+    else:
+        distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
     ha = hits_in_blob(track_graph, radius, a)
     hb = hits_in_blob(track_graph, radius, b)

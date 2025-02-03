@@ -129,6 +129,14 @@ def connected_component_subgraphs(G):
     return (G.subgraph(c).copy() for c in nx.connected_components(G))
 
 
+def find_highest_energy_node(track: Graph) -> Tuple[Voxel, dict]:
+    """Find the node with the highest associated energy in the track graph"""
+    # we want to obtain the node information here, so have to flag data = True
+    # and take first element
+    # (energy information is encoded into node, for some reason)
+    return max(track.nodes(data = True), key = lambda x: x[0].E )[0]
+
+
 def voxels_from_track_graph(track: Graph) -> List[Voxel]:
     """Create and return a list of voxels from a track graph."""
     return track.nodes()

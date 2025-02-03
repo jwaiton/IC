@@ -1299,7 +1299,8 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                                       energy_threshold : float                     ,
                                       min_voxels       : int                       ,
                                       blob_radius      : float                     ,
-                                      max_num_hits     : int
+                                      max_num_hits     : int                       ,
+                                      fixed_b1         : Optional[bool] = False
                                      ) -> Callable:
     """
     For a given paolina parameters returns a function that extract tracks / blob information from a HitCollection.
@@ -1374,8 +1375,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                 extr1, extr2, length = plf.find_extrema_and_length(distances)
                 extr1_pos = extr1.XYZ
                 extr2_pos = extr2.XYZ
-
-                e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius)
+                e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius, fixed_b1)
 
                 overlap = float(sum(h.Ep for h in set(hits_blob1).intersection(set(hits_blob2))))
                 list_of_vars = [hitc.event, tID, energy, length, numb_of_voxels,

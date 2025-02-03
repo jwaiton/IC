@@ -22,6 +22,7 @@ from typing import Sequence
 from typing import List
 from typing import Tuple
 from typing import Dict
+from typing import Optional
 
 MAX3D = np.array([float(' inf')] * 3)
 MIN3D = np.array([float('-inf')] * 3)
@@ -171,16 +172,26 @@ def shortest_paths(track_graph : Graph, fixed_b1 : Optional[bool] = False, blob_
 
 def find_extrema_and_length(distance : Dict[Voxel, Dict[Voxel, float]]) -> Tuple[Voxel, Voxel, float]:
     """Find the extrema and the length of a track, given its dictionary of distances."""
+    first, last, max_distance = None, None, 0
     if not distance:
         raise NoVoxels
+    # check for only one voxel 1 and voxel 2
     if len(distance) == 1:
-        only_voxel = next(iter(distance))
-        return (only_voxel, only_voxel, 0.)
-    first, last, max_distance = None, None, 0
+        if len(distance[list(distance.keys())[0]]) == 1:
+            only_voxel = next(iter(distance))
+            return (only_voxel, only_voxel, 0.)
+        # this is the condition under which fixed blob_1 is engaged
+        else:
+            # first element is only element, take it as a given.
+            first, inner_dictionary = next(iter(distance.items()))
+            last          = max(inner_dictionary, key = inner_dictionary.get)
+            max_distance     = inner_dictionary[last]
+
     for (voxel1, dist_from_voxel_1_to), (voxel2, _) in combinations(distance.items(), 2):
         d = dist_from_voxel_1_to[voxel2]
         if d > max_distance:
             first, last, max_distance = voxel1, voxel2, d
+
     return first, last, max_distance
 
 

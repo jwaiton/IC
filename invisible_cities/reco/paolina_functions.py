@@ -142,16 +142,29 @@ def voxels_from_track_graph(track: Graph) -> List[Voxel]:
     return track.nodes()
 
 
-def shortest_paths(track_graph : Graph) -> Dict[Voxel, Dict[Voxel, float]]:
+def shortest_paths(track_graph : Graph, fixed_b1 : Optional[bool] = False, blob_1_node : Optional[Voxel] = None) -> Dict[Voxel, Dict[Voxel, float]]:
     """Compute shortest path lengths between all nodes in a weighted graph."""
     def voxel_pos(x):
         return x[0].pos.tolist()
 
-    distances = dict(nx.all_pairs_dijkstra_path_length(track_graph, weight='distance'))
+    # if you want distances between highest energy node and everything else
+    if fixed_b1:
+        if blob_1_node is None:
+            RuntimeError("Fixed blob 1 node selected but not provided")
+        distances = dict(nx.single_source_dijkstra_path_length(track_graph, source = blob_1_node, weight = 'distance'))
 
-    # sort the output so the result is reproducible
-    distances = { v1 : {v2:d for v2, d in sorted(dmap.items(), key=voxel_pos)}
-                  for v1, dmap in sorted(distances.items(), key=voxel_pos)}
+        # alter formatting to match non-fixed shortest path data structure
+        # for backwards compatibility.
+        distances = {list(distances.keys())[0] : distances}
+    # if you want distances between all nodes
+    else:
+
+        distances = dict(nx.all_pairs_dijkstra_path_length(track_graph, weight='distance'))
+
+        # sort the output so the result is reproducible
+        distances = { v1 : {v2:d for v2, d in sorted(dmap.items(), key=voxel_pos)}
+                      for v1, dmap in sorted(distances.items(), key=voxel_pos)}
+
     return distances
 
 

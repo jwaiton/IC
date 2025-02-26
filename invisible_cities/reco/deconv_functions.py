@@ -260,7 +260,7 @@ def interpolate_signal(Hs           : np.ndarray,
     coords       = [grid[in_range(grid, *edge)] for edge, grid in zip(edges, det_grid)]
     new_points   = np.meshgrid(*coords, indexing='ij')
     new_points   = tuple      (new_p.flatten() for new_p in new_points)
-    H1 = interpolate.griddata(inter_points, Hs.flatten(), new_points, method=inter_method.value)
+    H1 = np.float64(interpolate.griddata(inter_points, Hs.flatten(), new_points, method=inter_method.value))
     H1 = np.nan_to_num       (H1.reshape([len(c) for c in coords]))
     H1 = np.clip             (H1, 0, None)
 

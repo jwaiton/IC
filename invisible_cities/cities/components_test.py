@@ -340,6 +340,41 @@ def test_read_wrong_pmt_ids(ICDATADIR):
         next(sns_gen)
 
 
+@mark.parametrize("apply_z", (True, False))
+def test_hits_corrector_z_uncorrected_when_flagged( correction_map_filename
+                                                  , apply_z):
+    '''
+    Test to ensure that z is uncorrected when `apply_z` is True
+    '''
+
+    # create some hits to correct
+    n  = 50
+    xs = np.random.uniform(-10, 10, n)
+    ys = np.random.uniform(-10, 10, n)
+    zs = np.random.uniform( 10, 50, n)
+
+    hits = []
+    for i, x, y, z in zip(range(n), xs, ys, zs):
+        c = Cluster(0, xy(x, y), xy.zero(), 1)
+        h = Hit(i, c, z, 1, xy.zero(), 0)
+        hits.append(h)
+
+    hc = HitCollection(0, 1, hits)
+
+    correct = hits_corrector(correction_map_filename,
+                             apply_temp = False, 
+                             norm_strat = NormStrategy.kr,
+                             norm_value = None,
+                             apply_z = apply_z)
+    corrected_z = np.array([h.Z for h in correct(hc).hits])
+
+    # if we expect a change, assert a change and vice versa
+    if apply_z:
+        assert_raises(AssertionError, assert_equal, corrected_z, zs)
+    else:
+        assert_equal(corrected_z, zs)
+
+
 @mark.parametrize( "norm_strat norm_value".split(),
                   ( (NormStrategy.kr    , None) # None marks the default value
                   , (NormStrategy.max   , None)

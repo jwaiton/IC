@@ -378,6 +378,7 @@ def beersheba( files_in         : OneOrManyFiles
              , deconv_params    : dict
              , corrections_file : str
              , apply_temp       : bool
+             , apply_z          : Optional[bool] = False
              ):
     """
     The city corrects Penthesilea hits energy and extracts topology information.
@@ -452,7 +453,7 @@ def beersheba( files_in         : OneOrManyFiles
     """
 
     if corrections_file is None: correct_hits = identity
-    else                       : correct_hits = hits_corrector(corrections_file, apply_temp)
+    else                       : correct_hits = hits_corrector(corrections_file, apply_temp, apply_z)
     correct_hits       = fl.map( correct_hits, item="hits")
 
     threshold_hits  = fl.map(hits_thresholder(threshold, same_peak), item="hits")

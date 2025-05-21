@@ -82,6 +82,7 @@ def esmeralda( files_in         : OneOrManyFiles
              , paolina_params   : dict
              , corrections_file : str
              , apply_temp       : bool
+             , apply_z          : Optional[bool] = False
              ):
     """
     The city applies a threshold to sipm hits and extracts
@@ -144,7 +145,7 @@ def esmeralda( files_in         : OneOrManyFiles
     - DST/Events      - kdst information
     """
     if corrections_file is None: correct_hits = identity
-    else                       : correct_hits = hits_corrector(corrections_file, apply_temp)
+    else                       : correct_hits = hits_corrector(corrections_file, apply_temp, apply_z)
     correct_hits       = fl.map( correct_hits, item="hits")
     drop_external_hits = fl.map(hit_dropper(fiducial_r), item="hits")
     threshold_hits     = fl.map(hits_thresholder(threshold, same_peak), item="hits")

@@ -95,6 +95,7 @@ def sophronia( files_in           : OneOrManyFiles
              , same_peak          : bool
              , corrections_file   : Optional[str]  = None
              , apply_temp         : Optional[bool] = None
+             , apply_z            : Optional[bool] = False
              ):
 
     global_reco = compute_xy_position( detector_db
@@ -134,7 +135,7 @@ def sophronia( files_in           : OneOrManyFiles
     merge_nn_hits  = df.map( hits_merger(same_peak)
                            , item = "hits")
 
-    correct_hits   = df.map( hits_corrector(corrections_file, apply_temp) if corrections_file is not None else identity
+    correct_hits   = df.map( hits_corrector(corrections_file, apply_temp, apply_z) if corrections_file is not None else identity
                            , item = "hits")
 
     build_pointlike_event = df.map( pointlike_event_builder( detector_db

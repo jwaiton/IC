@@ -69,6 +69,7 @@ from .. database.load_db       import DataSiPM
 from .. reco.deconv_functions  import find_nearest
 from .. reco.deconv_functions  import cut_and_redistribute_df
 from .. reco.deconv_functions  import drop_isolated_sensors
+from .. reco.deconv_functions  import drop_isolated_clusters
 from .. reco.deconv_functions  import deconvolve
 from .. reco.deconv_functions  import richardson_lucy
 from .. reco.deconv_functions  import no_satellite_killer
@@ -336,7 +337,8 @@ def cut_over_Q(q_cut, redist_var):
     return cut_over_Q
 
 
-def drop_isolated(distance, redist_var):
+#def drop_isolated(distance, redist_var):
+def drop_isolated(distance, nhits, redist_var)
     """
     Drops rogue/isolated hits (SiPMs) from hits.
 
@@ -349,7 +351,8 @@ def drop_isolated(distance, redist_var):
     ----------
     drop_isolated_sensors : Function that will drop the isolated sensors.
     """
-    drop = drop_isolated_sensors(distance, redist_var)
+    drop = drop_isolated_clusters(distance, nhits, redist_var)
+    #drop = drop_isolated_sensors(distance, redist_var)
 
     def drop_isolated(df): # df shall be an event cdst
         df = df.groupby(['event', 'npeak']).apply(drop).reset_index(drop=True)
@@ -503,7 +506,9 @@ def beersheba( files_in         : OneOrManyFiles
 
     cut_sensors           = fl.map(cut_over_Q   (deconv_params.pop("q_cut")    , ['E', 'Ec']),
                                    item = 'hits')
-    drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec']),
+    #drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec']),
+    #                               item = 'hits')
+    drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), deconv_params.pop("cluster_size"), ['E', 'Ec']),
                                    item = 'hits')
     filter_events_no_hits = fl.map(check_nonempty_dataframe,
                                    args = 'hits',

@@ -181,6 +181,51 @@ def drop_isolated_sensors(distance  : List[float]=[10., 10.],
     return drop_isolated_sensors
 
 
+def drop_isolated_clusters(distance   :  List[float]= [10., 10., 1.],
+                           nhits      :  int        = 3,
+                           variables  :  List[str  ]= [      ]) -> Callable:
+    '''
+    Drop isolated clusters of hits (SiPMs).
+
+    Parameters
+    ----------
+    df       : Groupby ('event' and 'npeak') dataframe
+
+    Initialisation parameters:
+        distance  : Distance to check for other sensors, equal to sensor pitch and z rebinning.
+        nhits     : Number of hits to classify a cluster.
+        variables : List of variables to be redistributed (generally the energies)
+    '''
+
+
+    def drop_event(df):
+        # normalise distances
+        x = df.X.values / distance[0]
+        y = df.Y.values / distance[1]
+        z = df.Z.values / distance[2]
+
+        xyz = np.column_stack((x, y, z))
+        dr3 = cdist(xyz, xyz)
+
+        if not np.any(dr3>0):
+            return df.iloc[:0] # Empty dataframe
+
+        # normalised, so square root of the dimensions
+        dist = np.sqrt(3)
+        closest = np.apply_along_axis(lambda d: len(d[d < dist]), 1, dr3)
+        max_xyz = closest > nhits
+        pass_df = event.loc[mask_xyz, :].copy()
+
+        # reweighting
+        with np.errstate(divide='ignore'):
+            columns = pass_df.loc[:, variables]
+            columns *= np.divide(df.loc[:,variables].sum().values,columns.sum())
+            pass_df.loc[:, variables] = columns
+
+        return pass_df
+    
+    return drop_event
+
 def deconvolution_input(sample_width : List[float     ],
                         det_grid     : List[np.ndarray],
                         inter_method : InterpolationMethod = InterpolationMethod.cubic

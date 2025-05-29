@@ -338,7 +338,7 @@ def cut_over_Q(q_cut, redist_var):
 
 
 #def drop_isolated(distance, redist_var):
-def drop_isolated(distance, nhits, redist_var):
+def drop_isolated(distance, nhits = 3, redist_var = []):
     """
     Drops rogue/isolated hits (SiPMs) from hits.
 

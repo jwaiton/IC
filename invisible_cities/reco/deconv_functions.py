@@ -213,8 +213,8 @@ def drop_isolated_clusters(distance   :  List[float]= [10., 10., 1.],
         # normalised, so square root of the dimensions
         dist = np.sqrt(3)
         closest = np.apply_along_axis(lambda d: len(d[d < dist]), 1, dr3)
-        max_xyz = closest > nhits
-        pass_df = event.loc[mask_xyz, :].copy()
+        mask_xyz = closest > nhits
+        pass_df = df.loc[mask_xyz, :].copy()
 
         # reweighting
         with np.errstate(divide='ignore'):

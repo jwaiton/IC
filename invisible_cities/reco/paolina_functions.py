@@ -226,13 +226,41 @@ def hits_in_blob(track_graph : Graph,
     return blob_hits
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def find_highest_encapsulating_node( track   : Graph
+                                   , extreme : Voxel
+                                   , big_radius    : float
+                                   , small_radius  : float) -> Tuple[Voxel, dict]:
+    '''
+    Find the voxel within a big radius for which the most energy
+    is captured within an equivalent smaller radius.
+    '''
+    distances = shortest_paths(track)
+    nodes_within_radius = [node for node in track.nodes if distances[extreme][node] <= big_radius]
+
+    def energy_within_radius(node):
+        return energy_of_voxels_within_radius(distances[node], small_radius)
+
+    highest_encapsulating_node = max(nodes_within_radius, key=energy_within_radius)
+    return highest_encapsulating_node
+
+
+def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, small_radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
-       For each pair of observables, the one of the blob of largest energy is returned first."""
+       Does so with a double iteration method, first taking the extremes
+       and defining an extreme radius around them to find the voxel with the
+       largest energy, and redefining that as the central voxel.
+       """
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
-    ha = hits_in_blob(track_graph, radius, a)
-    hb = hits_in_blob(track_graph, radius, b)
+
+    # find the highest energy voxel in a radius
+    #va_highE = find_highest_energy_node(track_graph, a, big_radius)
+    #vb_highE = find_highest_energy_node(track_graph, b, big_radius)
+    va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius)
+    vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius)
+    # Select any node and check its attributes
+    ha = hits_in_blob(track_graph, small_radius, va_highE)
+    hb = hits_in_blob(track_graph, small_radius, vb_highE)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype
@@ -241,11 +269,11 @@ def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple
 
     # Consider the case where voxels are built without associated hits
     if len(ha) == 0 and len(hb) == 0 :
-        Ea = energy_of_voxels_within_radius(distances[a], radius)
-        Eb = energy_of_voxels_within_radius(distances[b], radius)
+        Ea = energy_of_voxels_within_radius(distances[va_highE], small_radius)
+        Eb = energy_of_voxels_within_radius(distances[vb_highE], small_radius)
 
-    ca = blob_centre(a)
-    cb = blob_centre(b)
+    ca = blob_centre(va_highE)
+    cb = blob_centre(vb_highE)
 
     if Eb > Ea:
         return (Eb, Ea, hb, ha, cb, ca)

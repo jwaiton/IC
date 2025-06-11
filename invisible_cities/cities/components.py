@@ -1299,7 +1299,8 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                                       energy_threshold : float                     ,
                                       min_voxels       : int                       ,
                                       blob_radius      : float                     ,
-                                      max_num_hits     : int
+                                      max_num_hits     : int                       ,
+                                      scan_radius      : Optional[float] = None    
                                      ) -> Callable:
     """
     For a given paolina parameters returns a function that extract tracks / blob information from a HitCollection.
@@ -1318,11 +1319,17 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
         after min_voxel number of voxels is reached no dropping will happen.
     blob_radius      : float
         radius of blob
-
+    scan_radius      : float
+        radius of searchable area for a blob
+        
     Returns
     ----------
     A function that from a given HitCollection returns a pandas DataFrame with per track information.
     """
+    
+    if scan_radius is None:
+        scan_radius = blob_radius
+
     def create_extract_track_blob_info(hitc):
         df = pd.DataFrame(columns=list(types_dict_tracks.keys()))
         if len(hitc.hits) > max_num_hits:
@@ -1375,7 +1382,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                 extr1_pos = extr1.XYZ
                 extr2_pos = extr2.XYZ
 
-                e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius)
+                e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius, scan_radius)
 
                 overlap = float(sum(h.Ep for h in set(hits_blob1).intersection(set(hits_blob2))))
                 list_of_vars = [hitc.event, tID, energy, length, numb_of_voxels,

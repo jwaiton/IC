@@ -338,8 +338,8 @@ def cut_over_Q(q_cut, redist_var):
 
 
 def drop_isolated( distance   : List[float],
-                   nhits      : Optional[int] = 3,
-                   redist_var : Optional[List] = []):
+                   redist_var : Optional[List] = [],
+                   nhits      : Optional[int] = 3):
     """
     Drops rogue/isolated hits (SiPMs) from hits,
     can be configured to remove clusters 
@@ -515,9 +515,7 @@ def beersheba( files_in         : OneOrManyFiles
 
     cut_sensors           = fl.map(cut_over_Q   (deconv_params.pop("q_cut")    , ['E', 'Ec']),
                                    item = 'hits')
-    #drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec']),
-    #                               item = 'hits')
-    drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), deconv_params.pop("cluster_size"), ['E', 'Ec']),
+    drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec'], deconv_params.pop("cluster_size")),
                                    item = 'hits')
     filter_events_no_hits = fl.map(check_nonempty_dataframe,
                                    args = 'hits',

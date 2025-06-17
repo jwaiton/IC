@@ -16,6 +16,7 @@ from hypothesis.extra.pandas      import range_indexes
 
 from .. reco    .deconv_functions import cut_and_redistribute_df
 from .. reco    .deconv_functions import drop_isolated_sensors
+from .. reco    .deconv_functions import drop_isolated_clusters
 from .. reco    .deconv_functions import interpolate_signal
 from .. reco    .deconv_functions import deconvolution_input
 from .. reco    .deconv_functions import deconvolve
@@ -101,6 +102,32 @@ def test_drop_isolated_sensors():
         n_neighbours = len(df_cut[in_range(df_cut.X, row.X - dist[0], row.X + dist[0]) &
                                   in_range(df_cut.Y, row.Y - dist[1], row.Y + dist[1])])
         assert n_neighbours > 1
+
+
+def test_drop_isolated_clusters():
+    '''
+    Check that the energy is retained post dropping and
+    that each 'hit' has the requisite number of nearest
+    neighbours.
+    '''
+    dist  = [10.1, 10.1, 4.1]
+    nhits = 3
+    x = np.array([10, 10, 10, 20, 30, 40, 70, 70, 70])
+    y = np.array([10, 10, 10, 10, 10, 60, 40, 60, 80])
+    z = np.array([4,  4,  4,  4,  8,  42, 84, 35, 92])
+    size = len(z)
+    q = np.random.uniform(0, 20, size)
+    e = np.random.uniform(0, 200, size)
+    df            = pd.DataFrame({'X':x, 'Y':y, 'Z':z, 'Q':q, 'E':e})
+    
+    drop_function = drop_isolated_clusters(dist, nhits, ['E'])
+    df_cut        = drop_function(df)
+
+    if len(df_cut) > 0:
+        assert np.isclose(df_cut.E.sum(), df.E.sum())
+
+    # check the shape is as expected, E isn't the same
+    assert df_cut[['X', 'Y', 'Z', 'Q']].equals(df.head(5)[['X', 'Y', 'Z', 'Q']])
 
 
 def test_interpolate_signal():

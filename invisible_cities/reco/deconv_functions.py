@@ -185,7 +185,7 @@ def drop_isolated_clusters(distance   :  List[float]= [10., 10., 1.],
                            nhits      :  int        = 3,
                            variables  :  List[str  ]= [      ]) -> Callable:
     '''
-    Drop isolated clusters of hits (SiPMs).
+    Drops isolated clusters of hits (SiPMs).
 
     Parameters
     ----------
@@ -206,16 +206,30 @@ def drop_isolated_clusters(distance   :  List[float]= [10., 10., 1.],
 
         xyz = np.column_stack((x, y, z))
         dr3 = cdist(xyz, xyz)
-
-        if not np.any(dr3>0):
-            return df.iloc[:0] # Empty dataframe
-
-        # normalised, so square root of the dimensions
+        # normalised, so distance square root of the dimensions
         dist = np.sqrt(3)
-        closest = np.apply_along_axis(lambda d: len(d[d < dist]), 1, dr3)
-        max_xyz = closest > nhits
-        pass_df = event.loc[mask_xyz, :].copy()
 
+        # If there aren't any clusters, return empty df
+        if not np.any(dr3>0):
+            return df.iloc[:0] 
+        
+        # create mask for clusters by determining how many hits are within range.
+        closest = np.apply_along_axis(lambda d: len(d[d < dist]), 1, dr3)
+        mask_xyz = closest > nhits
+
+        # expand mask to include neighbors of neighbors etc to avoid removing edges
+        expanded_mask = mask_xyz.copy()
+        for _ in range(len(df)):
+            # find neighbors of currently included hits and combine
+            new_neighbors = np.any(dr3[:, expanded_mask] < dist, axis=1)
+            new_mask = expanded_mask | new_neighbors
+            # if no new neighbors are added break
+            if np.array_equal(new_mask, expanded_mask):
+                break
+            expanded_mask = new_mask
+        mask_xyz = expanded_mask
+
+        pass_df = df.loc[mask_xyz, :].copy()
         # reweighting
         with np.errstate(divide='ignore'):
             columns = pass_df.loc[:, variables]

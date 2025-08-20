@@ -206,13 +206,8 @@ def drop_isolated_clusters(distance   :  List[float],
         # normalise (x,y,z) array
         xyz = df[list("XYZ")].values / distance
 
-        
-        # normalised, so define distance sqrt(3)
-        dist = np.sqrt(3)
-
-        # build KDTree of datapoints, collect pairs within distance
-        xyz_tree = cKDTree(xyz)
-        pairs    = xyz_tree.query_pairs(r=dist)
+        # build KDTree of datapoints, collect pairs within normalised distance (sqrt of 3)
+        pairs = cKDTree(xyz).query_pairs(r = np.sqrt(3))
         
         # create graph that connects all close pairs between hit positions based on df index
         cluster_graph = nx.Graph()

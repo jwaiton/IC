@@ -88,6 +88,7 @@ def thekla(    files_in         : OneOrManyFiles
              , threshold        : float
              , drop_distance    : List[float]
              , drop_minimum     : int
+             , energy_type      : HitEnergy
              , paolina_params   : dict
              , corrections      : Optional[dict] = None
              ):
@@ -163,7 +164,7 @@ def thekla(    files_in         : OneOrManyFiles
         write_event_info = fl.sink(run_and_event_writer(h5out), args=("run_number", "event_number", "timestamp"))
         write_hits       = fl.sink(hits_writer(h5out),          args="hits")
         write_kdst_table = fl.sink( kdst_from_df_writer(h5out), args =  "kdst"      )
-        compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=HitEnergy.E)
+        compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=energy_type)
         # it should write the reco'd hits and also the topological information
         result = push(source = hits_and_kdst_from_files(files_in, 'RECO', 'Events'),
                       pipe   = pipe(fl.slice(*event_range, close_all=True)  ,

@@ -21,10 +21,22 @@ from .. types.symbols   import HitEnergy
 from typing import Sequence
 from typing import List
 from typing import Tuple
+from typing import Optional
 from typing import Dict
 
 MAX3D = np.array([float(' inf')] * 3)
 MIN3D = np.array([float('-inf')] * 3)
+
+def distance_scale_Z(z_scale):
+    '''Applies a z scale to events that allow for oblate spheroid blobs'''
+    def distance_Z(endpoint1, endpoint2, edge_attributes):
+        '''
+        Scale wrt Z
+        '''
+        distance = np.sqrt((endpoint1.X - endpoint2.X)**2 + (endpoint1.Y - endpoint2.Y)**2 + ((endpoint1.Z - endpoint2.Z) * z_scale)**2)
+        return distance
+
+    return distance_Z
 
 def bounding_box(seq : BHit) -> Sequence[np.ndarray]:
     """Returns two arrays defining the coordinates of a box that bounds the voxels"""
@@ -134,12 +146,16 @@ def voxels_from_track_graph(track: Graph) -> List[Voxel]:
     return track.nodes()
 
 
-def shortest_paths(track_graph : Graph) -> Dict[Voxel, Dict[Voxel, float]]:
+def shortest_paths(track_graph : Graph, z_scale : Optional[float] = None) -> Dict[Voxel, Dict[Voxel, float]]:
     """Compute shortest path lengths between all nodes in a weighted graph."""
     def voxel_pos(x):
         return x[0].pos.tolist()
 
-    distances = dict(nx.all_pairs_dijkstra_path_length(track_graph, weight='distance'))
+    if z_scale is None:
+        distances = dict(nx.all_pairs_dijkstra_path_length(track_graph, weight='distance'))
+    else:
+        z_scaler  = distance_scale_Z(z_scale)
+        distances = dict(nx.all_pairs_dijkstra_path_length(track_graph, weight=z_scaler))
 
     # sort the output so the result is reproducible
     distances = { v1 : {v2:d for v2, d in sorted(dmap.items(), key=voxel_pos)}
@@ -203,9 +219,10 @@ def blob_centre(voxel: Voxel) -> Tuple[float, float, float]:
 
 def hits_in_blob(track_graph : Graph,
                  radius      : float,
-                 extreme     : Voxel) -> Sequence[BHit]:
+                 extreme     : Voxel,
+                 zscale      : float) -> Sequence[BHit]:
     """Returns the hits that belong to a blob."""
-    distances         = shortest_paths(track_graph)
+    distances         = shortest_paths(track_graph, zscale)
     dist_from_extreme = distances[extreme]
     blob_pos          = blob_centre(extreme)
     diag              = np.linalg.norm(extreme.size)
@@ -244,23 +261,30 @@ def find_highest_encapsulating_node( track   : Graph
     return highest_encapsulating_node
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, small_radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(  track_graph : Graph
+                                   , big_radius : float
+                                   , small_radius : Tuple[float, float]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        Does so with a double iteration method, first taking the extremes
        and defining an extreme radius around them to find the voxel with the
        largest energy, and redefining that as the central voxel.
+
+       big_radius   --> scan radius
+       small_radius --> [XY radius,Z radius]
+       We want to squash the Z 
        """
-    distances = shortest_paths(track_graph)
+    zscale    = small_radius[0] / small_radius[1]
+    distances = shortest_paths(track_graph, zscale)
     a, b, _   = find_extrema_and_length(distances)
 
     # find the highest energy voxel in a radius
     #va_highE = find_highest_energy_node(track_graph, a, big_radius)
     #vb_highE = find_highest_energy_node(track_graph, b, big_radius)
-    va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius)
-    vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius)
+    va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius[0])
+    vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius[0])
     # Select any node and check its attributes
-    ha = hits_in_blob(track_graph, small_radius, va_highE)
-    hb = hits_in_blob(track_graph, small_radius, vb_highE)
+    ha = hits_in_blob(track_graph, small_radius[0], va_highE, zscale)
+    hb = hits_in_blob(track_graph, small_radius[0], vb_highE, zscale)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype
@@ -269,8 +293,8 @@ def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, smal
 
     # Consider the case where voxels are built without associated hits
     if len(ha) == 0 and len(hb) == 0 :
-        Ea = energy_of_voxels_within_radius(distances[va_highE], small_radius)
-        Eb = energy_of_voxels_within_radius(distances[vb_highE], small_radius)
+        Ea = energy_of_voxels_within_radius(distances[va_highE], small_radius[1])
+        Eb = energy_of_voxels_within_radius(distances[vb_highE], small_radius[1])
 
     ca = blob_centre(va_highE)
     cb = blob_centre(vb_highE)

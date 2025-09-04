@@ -341,9 +341,8 @@ def drop_isolated( distance   : List[float],
                    redist_var : List[str],
                    nhits      : Optional[int] = None):
     """
-    Drops rogue/isolated hits (SiPMs) from hits,
-    can be configured to remove isolated clusters
-    below a certain threshold number of hits. 
+    Drops rogue/isolated hits (SiPMs) from hits, can be configured to remove 
+    isolated clusters below a certain threshold number of hits. 
 
     Parameters
     ----------

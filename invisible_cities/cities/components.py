@@ -1326,9 +1326,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
     ----------
     A function that from a given HitCollection returns a pandas DataFrame with per track information.
     """
-    
-    if scan_radius is None:
-        scan_radius = blob_radius
+
 
     def create_extract_track_blob_info(hitc):
         df = pd.DataFrame(columns=list(types_dict_tracks.keys()))

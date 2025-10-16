@@ -22,6 +22,7 @@ from typing import Sequence
 from typing import List
 from typing import Tuple
 from typing import Dict
+from typing import Optional
 
 MAX3D = np.array([float(' inf')] * 3)
 MIN3D = np.array([float('-inf')] * 3)
@@ -244,7 +245,7 @@ def find_highest_encapsulating_node( track   : Graph
     return highest_encapsulating_node
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, small_radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(track_graph : Graph, big_radius : Optional[float], small_radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        Does so with a double iteration method, first taking the extremes
        and defining an extreme radius around them to find the voxel with the
@@ -252,15 +253,22 @@ def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, smal
        """
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
-
+    
+    if big_radius is None:
+        print('no blob radius provided')
     # find the highest energy voxel in a radius
-    #va_highE = find_highest_energy_node(track_graph, a, big_radius)
-    #vb_highE = find_highest_energy_node(track_graph, b, big_radius)
-    va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius)
-    vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius)
+        ha = hits_in_blob(track_graph, small_radius, a)
+        hb = hits_in_blob(track_graph, small_radius, b)
+        ca = blob_centre(a)
+        cb = blob_centre(b)
+    else:
+        va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius)
+        vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius)
     # Select any node and check its attributes
-    ha = hits_in_blob(track_graph, small_radius, va_highE)
-    hb = hits_in_blob(track_graph, small_radius, vb_highE)
+        ha = hits_in_blob(track_graph, small_radius, va_highE)
+        hb = hits_in_blob(track_graph, small_radius, vb_highE)
+        ca = blob_centre(va_highE)
+        cb = blob_centre(vb_highE)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype
@@ -272,8 +280,6 @@ def blob_energies_hits_and_centres(track_graph : Graph, big_radius : float, smal
         Ea = energy_of_voxels_within_radius(distances[va_highE], small_radius)
         Eb = energy_of_voxels_within_radius(distances[vb_highE], small_radius)
 
-    ca = blob_centre(va_highE)
-    cb = blob_centre(vb_highE)
 
     if Eb > Ea:
         return (Eb, Ea, hb, ha, cb, ca)

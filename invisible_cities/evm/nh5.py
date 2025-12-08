@@ -118,7 +118,7 @@ class S2Si(tb.IsDescription):
     """
     event = tb.  Int64Col(pos=0)
     peak  = tb.  UInt8Col(pos=2) # peak number
-    nsipm = tb.  Int16Col(pos=3) # sipm number
+    nsipm = tb.  UInt16Col(pos=3) # SiPM SensorID (up to 56063 in NEXT-100, hence unsigned int16)
     ene   = tb.Float32Col(pos=5) # energy in pes
 
 

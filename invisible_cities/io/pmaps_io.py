@@ -4,6 +4,8 @@ import numpy  as np
 import tables as tb
 import pandas as pd
 
+import warnings
+
 from .. core.exceptions    import InvalidInputFileStructure
 
 from .. evm .pmaps         import  PMTResponses
@@ -50,6 +52,10 @@ def store_peak(pmt_table, pmti_table, si_table,
 
 def store_pmap(tables, pmap, event_number):
     s1_table, s2_table, si_table, s1i_table, s2i_table = tables
+    if len(pmap.s1s) > 256:
+        warnings.warn(f"Number of S1 peaks exceeds 256 in event {event_number}: {len(pmap.s1s)}, this will lead to integer overflow of the peak index.")
+    if len(pmap.s2s) > 256:
+        warnings.warn(f"Number of S2 peaks exceeds 256 in event {event_number}: {len(pmap.s2s)}, this will lead to integer overflow of the peak index.")
     for peak_number, s1 in enumerate(pmap.s1s):
         store_peak(s1_table, s1i_table,     None, s1, peak_number, event_number)
     for peak_number, s2 in enumerate(pmap.s2s):

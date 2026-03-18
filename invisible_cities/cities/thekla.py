@@ -88,7 +88,7 @@ def thekla(    files_in         : OneOrManyFiles
              , threshold        : float
              , drop_distance    : List[float]
              , drop_minimum     : int
-             , energy_type      : HitEnergy
+             , energy_type      : str 
              , hit_location     : dict
              , paolina_params   : dict
              , corrections      : Optional[dict] = None
@@ -120,9 +120,9 @@ def thekla(    files_in         : OneOrManyFiles
     drop_minimum  : int
         Minimum number of hits to classify a cluster
 
-    energy_type   : HitEnergy
+    energy_type   : str
         The energy type to use when calculating topological information
-        HitEnergy.E or HitEnergy.Ec
+        E or Ec
     hit_location  : dict
         group_name : str
             group name (usually RECO)
@@ -152,6 +152,10 @@ def thekla(    files_in         : OneOrManyFiles
     MC info : (if run number <=0)
     """
 
+    if energy_type == 'Ec':
+        energy_type = HitEnergy.Ec
+    elif energy_type == 'E':
+        energy_type = HitEnergy.E
     # mapping functionals
     hitc_to_df     = fl.map(hitc_to_df_, item="hits") # <- reusing keys naughty
     df_to_hitc     = fl.map(hitc_from_df, item="hits") # <- reusing keys naughty

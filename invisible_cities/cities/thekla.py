@@ -176,7 +176,7 @@ def thekla(    files_in         : OneOrManyFiles
         write_kdst_table = fl.sink( kdst_from_df_writer(h5out), args =  "kdst"      )
         compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=energy_type)
         # it should write the reco'd hits and also the topological information
-        result = push(source = hits_and_kdst_from_files(files_in, 'RECO', 'Events'),
+        result = push(source = hits_and_kdst_from_files(files_in, hit_location.group_name, hit_location.table_name),
                       pipe   = pipe(fl.slice(*event_range, close_all=True)  ,
                                     print_every(print_mod)                  ,
                                     event_count_in.spy                      ,

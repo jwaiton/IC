@@ -88,6 +88,8 @@ def thekla(    files_in         : OneOrManyFiles
              , threshold        : float
              , drop_distance    : List[float]
              , drop_minimum     : int
+             , energy_type      : HitEnergy
+             , hit_location     : dict
              , paolina_params   : dict
              , corrections      : Optional[dict] = None
              ):
@@ -117,6 +119,15 @@ def thekla(    files_in         : OneOrManyFiles
         Distance to check if a SiPM has active neighbours
     drop_minimum  : int
         Minimum number of hits to classify a cluster
+
+    energy_type   : HitEnergy
+        The energy type to use when calculating topological information
+        HitEnergy.E or HitEnergy.Ec
+    hit_location  : dict
+        group_name : str
+            group name (usually RECO)
+        table_name : str
+            table name (usually Events)
 
     INSERT THE PAOLINA PARAMS IN HERE BUT AS ISAURA I GUESS?
 
@@ -161,9 +172,9 @@ def thekla(    files_in         : OneOrManyFiles
 
     with tb.open_file(file_out, 'w', filters=tbl.filters(compression)) as h5out:
         write_event_info = fl.sink(run_and_event_writer(h5out), args=("run_number", "event_number", "timestamp"))
-        write_hits       = fl.sink(hits_writer(h5out),          args="hits")
+        write_hits       = fl.sink(hits_writer(h5out, group_name = hit_location.group_name, table_name = hit_location.table_name), args="hits")
         write_kdst_table = fl.sink( kdst_from_df_writer(h5out), args =  "kdst"      )
-        compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=HitEnergy.E)
+        compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=energy_type)
         # it should write the reco'd hits and also the topological information
         result = push(source = hits_and_kdst_from_files(files_in, 'RECO', 'Events'),
                       pipe   = pipe(fl.slice(*event_range, close_all=True)  ,
@@ -186,12 +197,12 @@ def thekla(    files_in         : OneOrManyFiles
                                     events_out  = event_count_post_cuts .future,
                                     evtnum_list = event_number_collector.future))
 
-                                
+
         if run_number <= 0:
             copy_mc_info(files_in, h5out, result.evtnum_list,
-                         detector_db, run_number)  
-                                
+                         detector_db, run_number)
+
         return result
-                      
-                      
-                      
+
+
+

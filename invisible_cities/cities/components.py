@@ -591,7 +591,7 @@ def hits_and_kdst_from_files( paths : List[str]
 
             if MC:
                 # modify the hits
-                hits_df.rename(columns={"event_id" : "event", "x" : "X", "y" : "Y", "z" : "Z", "energy" : "E"})
+                hits_df.rename(columns={"event_id" : "event", "x" : "X", "y" : "Y", "z" : "Z", "energy" : "E"}, inplace=True)
 
         except tb.exceptions.NoSuchNodeError:
             continue

@@ -578,13 +578,21 @@ def pmap_from_files(paths):
 @check_annotations
 def hits_and_kdst_from_files( paths : List[str]
                             , group : str
-                            , node  : str ) -> Iterator[Dict[str,Union[HitCollection, pd.DataFrame, MCInfo, int, float]]]:
+                            , node  : str
+                            , MC    : bool) -> Iterator[Dict[str,Union[HitCollection, pd.DataFrame, MCInfo, int, float]]]:
     """Reader of the files, yields HitsCollection, pandas DataFrame with
-    kdst info, run_number, event_number and timestamp."""
+    kdst info, run_number, event_number and timestamp.
+
+    Includes an MC flag to force the hits (MC/hits) to match the appropriate shape"""
     for path in paths:
         try:
             hits_df = load_dst (path, group, node)
             kdst_df = load_dst (path, 'DST' , 'Events')
+
+            if MC:
+                # modify the hits
+                hits_df.rename(columns={"event_id" : "event", "x" : "X", "y" : "Y", "z" : "Z", "energy" : "E"})
+
         except tb.exceptions.NoSuchNodeError:
             continue
 
@@ -1300,7 +1308,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                                       min_voxels       : int                       ,
                                       blob_radius      : float                     ,
                                       max_num_hits     : int                       ,
-                                      scan_radius      : Optional[float] = None    
+                                      scan_radius      : Optional[float] = None
                                      ) -> Callable:
     """
     For a given paolina parameters returns a function that extract tracks / blob information from a HitCollection.
@@ -1321,7 +1329,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
         radius of blob
     scan_radius      : float
         radius of searchable area for a blob
-        
+
     Returns
     ----------
     A function that from a given HitCollection returns a pandas DataFrame with per track information.

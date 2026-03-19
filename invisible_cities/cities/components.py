@@ -592,6 +592,7 @@ def hits_and_kdst_from_files( paths : List[str]
             if MC:
                 # modify the hits
                 hits_df.rename(columns={"event_id" : "event", "x" : "X", "y" : "Y", "z" : "Z", "energy" : "E"}, inplace=True)
+                hits_df['npeak'] = 1
                 # force set the time to match across all MC/hits
                 hits_df['time'] = hits_df.time.iloc[0]
         except tb.exceptions.NoSuchNodeError:

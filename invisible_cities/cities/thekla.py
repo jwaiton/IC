@@ -180,7 +180,7 @@ def thekla(    files_in         : OneOrManyFiles
 
     with tb.open_file(file_out, 'w', filters=tbl.filters(compression)) as h5out:
         write_event_info = fl.sink(run_and_event_writer(h5out), args=("run_number", "event_number", "timestamp"))
-        write_hits       = fl.sink(hits_writer(h5out, group_name = hit_location['group_name'], table_name = hit_location['table_name']), args="hits")
+        write_hits       = fl.sink(hits_writer(h5out), args="hits")
         write_kdst_table = fl.sink( kdst_from_df_writer(h5out), args =  "kdst"      )
         compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=energy_type)
         # it should write the reco'd hits and also the topological information

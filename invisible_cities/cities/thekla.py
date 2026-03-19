@@ -89,6 +89,7 @@ def thekla(    files_in         : OneOrManyFiles
              , drop_distance    : List[float]
              , drop_minimum     : int
              , energy_type      : str
+             , MC               : bool
              , hit_location     : dict
              , paolina_params   : dict
              , corrections      : Optional[dict] = None
@@ -123,6 +124,9 @@ def thekla(    files_in         : OneOrManyFiles
     energy_type   : str
         The energy type to use when calculating topological information
         E or Ec
+    MC            : bool
+        Flag to signify if you want the topology output to be implemented
+        onto MC/hits or RECO/Events
     hit_location  : dict
         group_name : str
             group name (usually RECO)
@@ -180,7 +184,7 @@ def thekla(    files_in         : OneOrManyFiles
         write_kdst_table = fl.sink( kdst_from_df_writer(h5out), args =  "kdst"      )
         compute_tracks   = compute_and_write_tracks_info(paolina_params, h5out, hit_type=energy_type)
         # it should write the reco'd hits and also the topological information
-        result = push(source = hits_and_kdst_from_files(files_in, hit_location['group_name'], hit_location['table_name'], True),
+        result = push(source = hits_and_kdst_from_files(files_in, hit_location['group_name'], hit_location['table_name'], MC),
                       pipe   = pipe(fl.slice(*event_range, close_all=True)  ,
                                     print_every(print_mod)                  ,
                                     event_count_in.spy                      ,

@@ -52,6 +52,7 @@ from .  components import print_every
 from .  components import hits_corrector
 from .  components import hits_thresholder
 from .  components import hits_and_kdst_from_files
+from .  components import identity
 
 from .. core.configure         import EventRangeType
 from .. core.configure         import OneOrManyFiles
@@ -386,7 +387,7 @@ def beersheba( files_in         : OneOrManyFiles
              , same_peak        : bool
              , deconv_params    : dict
              , satellite_params : Union[dict, NoneType]
-             , corrections      : dict
+             , corrections      : Optional[dict] = None
              ):
     """
     The city corrects Penthesilea hits energy and extracts topology information.
@@ -480,7 +481,8 @@ def beersheba( files_in         : OneOrManyFiles
     DECO    : Deconvolved hits table
     MC info : (if run number <=0)
     """
-    correct_hits   = fl.map(hits_corrector(**corrections), item="hits")
+    correct_hits   = fl.map(hits_corrector(**corrections) if corrections is not None else identity
+                            , item="hits")
     threshold_hits = fl.map(hits_thresholder(threshold, same_peak), item="hits")
 
     deconv_params['psf_fname'       ] = expandvars(deconv_params['psf_fname'])

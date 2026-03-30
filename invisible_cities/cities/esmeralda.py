@@ -51,12 +51,14 @@ from .  components import hits_and_kdst_from_files
 from .  components import hits_corrector
 from .  components import hits_thresholder
 from .  components import compute_and_write_tracks_info
+from .  components import identity
 
 from .. io.         hits_io import hits_writer as hits_writer_
 from .. io.         hits_io import hits_from_df
 from .. io.         kdst_io import kdst_from_df_writer
 from .. io.run_and_event_io import run_and_event_writer
 
+from typing import Optional
 
 def hit_dropper(radius : float):
     max_r2 = radius**2
@@ -88,7 +90,7 @@ def esmeralda( files_in         : OneOrManyFiles
              , same_peak        : bool
              , fiducial_r       : float
              , paolina_params   : dict
-             , corrections      : dict
+             , corrections      : Optional[dict] = None
              ):
     """
     The city applies a threshold to sipm hits and extracts
@@ -156,8 +158,8 @@ def esmeralda( files_in         : OneOrManyFiles
     - Summary/events  - summary of per event information
     - DST/Events      - kdst information
     """
-    correct_hits       = hits_corrector(**corrections)
-    correct_hits       = fl.map(correct_hits, item="hits")
+    correct_hits       = fl.map(hits_corrector(**corrections) if corrections is not None else identity
+                                , item="hits")
     drop_external_hits = fl.map(hit_dropper(fiducial_r), item="hits")
     threshold_hits     = fl.map(hits_thresholder(threshold, same_peak), item="hits")
     to_hitc            = fl.map(hitc_from_df, item="hits")

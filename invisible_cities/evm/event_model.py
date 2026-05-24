@@ -290,10 +290,12 @@ class HitCollection(Event):
 
     def store(self, table):
         row = table.row
+
+        overflow_protection = np.iinfo(np.uint16).max
         for hit in self.hits:
             row["event"   ] = self.event
             row["time"    ] = self.time
-            row["npeak"   ] = hit .npeak
+            row["npeak"   ] = min(hit.npeak, overflow_protection)
             row["Xpeak"   ] = hit .Xpeak
             row["Ypeak"   ] = hit .Ypeak
             row["X"       ] = hit .X
@@ -362,7 +364,7 @@ class KrEvent(Event):
     def store(self, table):
         row = table.row
 
-        dummy    = np.iinfo(np.uint16).max
+        overflow_protection = np.iinfo(np.uint16).max
         s1_peaks = range(int(self.nS1)) if self.nS1 else [0]
         s2_peaks = range(int(self.nS2)) if self.nS2 else [0]
         self.fill_defaults()
@@ -371,8 +373,8 @@ class KrEvent(Event):
             for j in s2_peaks:
                 row["event"  ] = self.event
                 row["time"   ] = self.time
-                row["s1_peak"] = i if self.nS1 else dummy
-                row["s2_peak"] = j if self.nS2 else dummy
+                row["s1_peak"] = min(i, overflow_protection) if self.nS1 else overflow_protection
+                row["s2_peak"] = min(j, overflow_protection) if self.nS2 else overflow_protection
                 row["nS1"    ] = self.nS1
                 row["nS2"    ] = self.nS2
 

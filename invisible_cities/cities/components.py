@@ -426,18 +426,19 @@ def signal_finder(buffer_len   : float,
     return find_signal
 
 
-# TODO: consider caching database
 def deconv_pmt(dbfile, run_number, n_baseline,
-               selection=None, pedestal_function=csf.means):
+               mask=True, pedestal_function=csf.means):
     DataPMT    = load_db.DataPMT(dbfile, run_number = run_number)
-    pmt_active = np.nonzero(DataPMT.Active.values)[0].tolist() if selection is None else selection
-    coeff_c    = DataPMT.coeff_c  .values.astype(np.double)
-    coeff_blr  = DataPMT.coeff_blr.values.astype(np.double)
+    pmt_active = np.nonzero(DataPMT.Active.values)[0].tolist() if mask else np.ones(len(DataPMT), dtype=bool)
+    coeff_c    = DataPMT.coeff_c  .values.astype(np.double)[pmt_active]
+    coeff_blr  = DataPMT.coeff_blr.values.astype(np.double)[pmt_active]
 
-    def deconv_pmt(RWF):
-        CWF = pedestal_function(RWF[:, :n_baseline]) - RWF
-        return np.array(tuple(map(blr.deconvolve_signal, CWF[pmt_active],
-                                  coeff_c              , coeff_blr      )))
+    def deconv_pmt(rwfs):
+        assert len(rwfs) == len(coeff_c)
+        cwfs = pedestal_function(rwfs[:, :n_baseline]) - rwfs
+        cwfs = map(blr.deconvolve_signal, cwfs, coeff_c, coeff_blr)
+        return np.array(tuple(cwfs))
+
     return deconv_pmt
 
 
@@ -470,9 +471,9 @@ def get_event_info(h5in):
     return h5in.root.Run.events
 
 
-def get_number_of_active_pmts(detector_db, run_number):
+def get_number_of_pmts(detector_db, run_number):
     datapmt = load_db.DataPMT(detector_db, run_number)
-    return np.count_nonzero(datapmt.Active.values.astype(bool))
+    return len(datapmt)
 
 
 def check_nonempty_indices(s1_indices, s2_indices):
@@ -776,12 +777,13 @@ def build_pmap(detector_db, run_number, pmt_samp_wid, sipm_samp_wid,
                     stride       = s2_stride,
                     rebin_stride = s2_rebin_stride)
 
-    datapmt = load_db.DataPMT(detector_db, run_number)
-    pmt_ids = datapmt.SensorID[datapmt.Active.astype(bool)].values
-
+    datapmt  = load_db.DataPMT (detector_db, run_number)
+    datasipm = load_db.DataSiPM(detector_db, run_number)
+    pmt_ids  = datapmt .SensorID[datapmt .Active.astype(bool)].values
+    sipm_ids = np.argwhere(datasipm.Active.values==1).flatten()
     def build_pmap(ccwf, s1_indx, s2_indx, sipmzs): # -> PMap
         return pkf.get_pmap(ccwf, s1_indx, s2_indx, sipmzs,
-                            s1_params, s2_params, thr_sipm_s2, pmt_ids,
+                            s1_params, s2_params, thr_sipm_s2, pmt_ids, sipm_ids,
                             pmt_samp_wid, sipm_samp_wid)
 
     return build_pmap
@@ -789,8 +791,8 @@ def build_pmap(detector_db, run_number, pmt_samp_wid, sipm_samp_wid,
 
 def calibrate_pmts(dbfile, run_number, n_maw, thr_maw):
     DataPMT    = load_db.DataPMT(dbfile, run_number = run_number)
+    DataPMT    = DataPMT.loc[lambda df: df.Active==1]
     adc_to_pes = np.abs(DataPMT.adc_to_pes.values)
-    adc_to_pes = adc_to_pes[adc_to_pes > 0]
 
     def calibrate_pmts(cwf):# -> CCwfs:
         return csf.calibrate_pmts(cwf,
@@ -802,6 +804,7 @@ def calibrate_pmts(dbfile, run_number, n_maw, thr_maw):
 
 def calibrate_sipms(dbfile, run_number, thr_sipm):
     DataSiPM   = load_db.DataSiPM(dbfile, run_number)
+    DataSiPM   = DataSiPM.loc[lambda df: df.Active==1]
     adc_to_pes = np.abs(DataSiPM.adc_to_pes.values)
 
     def calibrate_sipms(rwf):
@@ -1736,3 +1739,20 @@ def hits_clusterizer( min_samples : int
 
 def identity(x : Any) -> Any:
     return x
+
+
+def sensor_masker(detector_db, run_number):
+    active_pmts  = load_db.DataPMT (detector_db, run_number).Active.values.astype(bool)
+    active_sipms = load_db.DataSiPM(detector_db, run_number).Active.values.astype(bool)
+
+    def mask_sensors(rwf_pmt, rwf_sipm):
+        return ( rwf_pmt [active_pmts ]
+               , rwf_sipm[active_sipms])
+
+    return mask_sensors
+
+
+def copy_db_info(file_in, file_out):
+    with tb.open_file(file_in) as file:
+        if "DB" in file.root:
+            file.copy_node(file.root.DB, file_out.root, recursive=True)

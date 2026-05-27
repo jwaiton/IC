@@ -3,10 +3,14 @@ import pandas as pd
 
 from itertools       import compress
 from copy            import deepcopy
-from typing          import List
 from sklearn.cluster import DBSCAN
 
+
+from typing          import List
+from typing          import Union
+
 from .. types.ic_types import NN
+from .. types.ic_types import NoneType
 
 EPSILON = np.finfo(np.float64).eps
 
@@ -321,3 +325,36 @@ def cluster_tagger(df_hits      : pd.DataFrame
                            .reset_index())
 
     return df_clustered.set_index(df_hits.index)
+
+
+def drop_isolated(redist_var        : List[str],
+                  clustering_params : Union[dict, NoneType]):
+    '''
+    Using the cluster table in the hits, drop all events that are
+    considered background clusters (-1).
+
+    If the `clusters` columns isn't present, require the inclusion of clusterisation
+    parameters to rerun the clustering.
+    '''
+
+
+    def drop_isolated_hits(df):
+        if 'cluster' not in df:
+            if clustering_params is not None:
+                df = cluster_tagger(df, **clustering_params)
+            else:
+                raise ValueError('Cluster dropping enabled but data has no clustering, please provide `clustering_params` to implement clustering on the fly.')
+
+        df_declustered = df[df.cluster != -1].copy()
+
+        # redistribute
+        with np.errstate(divide='ignore'):
+            columns = df_declustered.loc[:, redist_var]
+            columns *= np.divide(df.loc[:, redist_var].sum().values, columns.sum())
+            df_declustered.loc[:, redist_var] = columns
+
+
+        return df_declustered
+
+    return drop_isolated_hits
+

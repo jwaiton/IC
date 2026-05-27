@@ -75,6 +75,7 @@ from .. reco.deconv_functions  import drop_isolated_clusters
 from .. reco.deconv_functions  import deconvolve
 from .. reco.deconv_functions  import richardson_lucy
 from .. reco.deconv_functions  import no_satellite_killer
+from .. reco.hits_functions    import drop_isolated
 
 from .. reco.hits_functions     import cluster_tagger
 
@@ -321,36 +322,6 @@ def cut_over_Q(q_cut, redist_var):
     return cut_over_Q
 
 
-def drop_isolated(redist_var        : List[str],
-                  clustering_params : Union[dict, NoneType]):
-    '''
-    Using the cluster table in the hits, drop all events that are
-    considered background clusters (-1).
-
-    If the `clusters` columns isn't present, require the inclusion of clusterisation
-    parameters to rerun the clustering.
-    '''
-
-
-    def drop_isolated_hits(df):
-        if 'cluster' not in df:
-            if clustering_params is not None:
-                df = cluster_tagger(df, **clustering_params)
-            else:
-                raise ValueError('Cluster dropping enabled but data has no clustering, please provide `clustering_params` to implement clustering on the fly.')
-
-        df_declustered = df[df.cluster != -1].copy()
-
-        # redistribute
-        with np.errstate(divide='ignore'):
-            columns = df_declustered.loc[:, redist_var]
-            columns *= np.divide(df.loc[:, redist_var].sum().values, columns.sum())
-            df_declustered.loc[:, redist_var] = columns
-
-
-        return df_declustered
-
-    return drop_isolated_hits
 
 
 def check_nonempty_dataframe(df) -> bool:

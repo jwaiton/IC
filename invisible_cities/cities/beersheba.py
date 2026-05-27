@@ -41,6 +41,8 @@ import numpy  as np
 import tables as tb
 import pandas as pd
 
+import warnings
+
 from os   .path  import expandvars
 from scipy.stats import multivariate_normal
 from numpy       import nan_to_num
@@ -73,6 +75,8 @@ from .. reco.deconv_functions  import drop_isolated_clusters
 from .. reco.deconv_functions  import deconvolve
 from .. reco.deconv_functions  import richardson_lucy
 from .. reco.deconv_functions  import no_satellite_killer
+
+from .. reco.hits_functions     import cluster_tagger
 
 from .. io.run_and_event_io    import run_and_event_writer
 from .. io.          dst_io    import df_writer
@@ -317,44 +321,36 @@ def cut_over_Q(q_cut, redist_var):
     return cut_over_Q
 
 
-def drop_isolated( distance   : List[float],
-                   redist_var : List[str],
-                   nhits      : Optional[int] = None):
-    """
-    Drops rogue/isolated hits (SiPMs) from hits, can be configured to remove
-    isolated clusters below a certain threshold number of hits.
+def drop_isolated(redist_var        : List[str],
+                  clustering_params : Union[dict, NoneType]):
+    '''
+    Using the cluster table in the hits, drop all events that are
+    considered background clusters (-1).
 
-    Parameters
-    ----------
-    distance   : Distance between hits.
-    redist_var : List with variables to be redistributed.
-    nhits      : Minimum number of hits for a cluster to be considered non-isolated.
-    Returns
-    ----------
-    drop_isolated_sensors : Function that will drop the isolated sensors.
-    """
-
-    # distance is XY -> N
-    if   len(distance) == 2:
-        drop = drop_isolated_sensors(distance, redist_var)
-    elif len(distance) == 3:
-        if nhits is None:
-            raise TypeError("Applying 3-dimensional dropping of isolated hits requires parameter nhits which is missing.")
-        else:
-            drop = drop_isolated_clusters(distance, nhits, redist_var)
-    else:
-        raise ValueError(f"Invalid drop_dist parameter: expected 2 or 3 entries, but got {len(distance)}.")
+    If the `clusters` columns isn't present, require the inclusion of clusterisation
+    parameters to rerun the clustering.
+    '''
 
 
-    def drop_isolated(df): # df shall be an event cdst
-        if not len(df): return df
-        df = (df.groupby("event time npeak".split())
-                .apply(drop, include_groups=False)
-                .reset_index(level=3, drop=True) # drop this artifical index level
-                .reset_index())                  # and restore the "real" index
-        return df
+    def drop_isolated_hits(df):
+        if 'cluster' not in df:
+            if clustering_params is not None:
+                df = cluster_tagger(df, **clustering_params)
+            else:
+                raise ValueError('Cluster dropping enabled but data has no clustering, please provide `clustering_params` to implement clustering on the fly.')
 
-    return drop_isolated
+        df_declustered = df[df.cluster != -1].copy()
+
+        # redistribute
+        with np.errstate(divide='ignore'):
+            columns = df_declustered.loc[:, redist_var]
+            columns *= np.divide(df.loc[:, redist_var].sum().values, columns.sum())
+            df_declustered.loc[:, redist_var] = columns
+
+
+        return df_declustered
+
+    return drop_isolated_hits
 
 
 def check_nonempty_dataframe(df) -> bool:
@@ -381,18 +377,19 @@ def deconv_writer(h5out):
 
 
 @city
-def beersheba( files_in         : OneOrManyFiles
-             , file_out         : str
-             , compression      : str
-             , event_range      : EventRangeType
-             , print_mod        : int
-             , detector_db      : str
-             , run_number       : int
-             , threshold        : float
-             , same_peak        : bool
-             , deconv_params    : dict
-             , satellite_params : Union[dict, NoneType]
-             , corrections      : dict
+def beersheba( files_in          : OneOrManyFiles
+             , file_out          : str
+             , compression       : str
+             , event_range       : EventRangeType
+             , print_mod         : int
+             , detector_db       : str
+             , run_number        : int
+             , threshold         : float
+             , same_peak         : bool
+             , deconv_params     : dict
+             , satellite_params  : Union[dict, NoneType]
+             , clustering_params : Union[dict, NoneType]
+             , corrections       : dict
              ):
     """
     The city corrects Sophronia hits energy and extracts topology information.
@@ -500,7 +497,8 @@ def beersheba( files_in         : OneOrManyFiles
 
     cut_sensors           = fl.map(cut_over_Q   (deconv_params.pop("q_cut")    , ['E', 'Ec']),
                                    item = 'hits')
-    drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec'], deconv_params.pop("cluster_size", None)),
+    drop_sensors          = fl.map(drop_isolated(['E', 'Ec'], clustering_params),
+                                   #drop_sensors          = fl.map(drop_isolated(deconv_params.pop("drop_dist"), ['E', 'Ec'], deconv_params.pop("cluster_size", None)),
                                    item = 'hits')
     filter_events_no_hits = fl.map(check_nonempty_dataframe,
                                    args = 'hits',

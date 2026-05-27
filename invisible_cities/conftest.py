@@ -562,7 +562,6 @@ def beersheba_config(Th228_hits, PSFDIR, next100_mc_krmap):
                  , threshold     = 5 * units.pes
                  , same_peak     = True
                  , deconv_params = dict( q_cut         = 10
-                                       , drop_dist     = [16.0] * 2
                                        , psf_fname     = PSFDIR
                                        , e_cut         = 12e-3
                                        , n_iterations  = 100
@@ -575,7 +574,8 @@ def beersheba_config(Th228_hits, PSFDIR, next100_mc_krmap):
                                        , deconv_mode   = DeconvolutionMode.joint
                                        , cut_type      = CutType.abs
                                        , inter_method  = InterpolationMethod.cubic)
-                 , satellite_params = None
+                 , satellite_params  = None
+                 , clustering_params = None
                  , corrections   = dict( filename   = next100_mc_krmap
                                        , apply_temp = False
                                          , norm_method = NormMethod.maximum))

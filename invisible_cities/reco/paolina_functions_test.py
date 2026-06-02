@@ -711,7 +711,7 @@ def test_blobs(radius, expected):
     tracks = make_track_graphs(voxels)
 
     assert len(tracks) == 1
-    assert blob_energies(tracks[0], radius) == expected
+    assert blob_energies(tracks[0], radius, None) == expected
 
 
 @settings(deadline=None)
@@ -720,8 +720,8 @@ def test_blob_hits_are_inside_radius(hits, voxel_dimensions, blob_radius):
     voxels = voxelize_hits(hits, voxel_dimensions)
     tracks = make_track_graphs(voxels)
     for t in tracks:
-        Ea, Eb, hits_a, hits_b   = blob_energies_and_hits(t, blob_radius)
-        centre_a, centre_b       = blob_centres(t, blob_radius)
+        Ea, Eb, hits_a, hits_b   = blob_energies_and_hits(t, blob_radius, None)
+        centre_a, centre_b       = blob_centres(t, blob_radius, None)
 
         assert all(np.linalg.norm(hits_a["X Y Z".split()] - centre_a, axis=1) < blob_radius)
         assert all(np.linalg.norm(hits_b["X Y Z".split()] - centre_b, axis=1) < blob_radius)
@@ -746,15 +746,15 @@ def test_paolina_functions_with_voxels_without_associated_hits(blob_radius, min_
         Eb = energy_of_voxels_within_radius(distances[b], blob_radius)
 
         if Ea < Eb:
-            assert np.allclose(blob_centres(t, blob_radius)[0], b.pos)
-            assert np.allclose(blob_centres(t, blob_radius)[1], a.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[0], b.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[1], a.pos)
         else:
-            assert np.allclose(blob_centres(t, blob_radius)[0], a.pos)
-            assert np.allclose(blob_centres(t, blob_radius)[1], b.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[0], a.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[1], b.pos)
 
-        assert blob_energies(t, blob_radius) != (0, 0)
+        assert blob_energies(t, blob_radius, None) != (0, 0)
 
-        assert blob_energies_and_hits(t, blob_radius) != (0, 0, [], [])
+        assert blob_energies_and_hits(t, blob_radius, None) != (0, 0, [], [])
 
     energies = [v.E for v in voxels]
     e_thr = min(energies) + fraction_zero_one * (max(energies) - min(energies))
@@ -843,7 +843,7 @@ def test_make_tracks_function(ICDATADIR):
             tc_blobs.sort(key=lambda x : x.E)
             tc_blob_energies = (tc.blobs[0].E, tc.blobs[1].E)
 
-            assert np.allclose(blob_energies(t, blob_radius), tc_blob_energies)
+            assert np.allclose(blob_energies(t, blob_radius, None), tc_blob_energies)
 
 
 @given(bunch_of_hits(), box_sizes)

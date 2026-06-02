@@ -279,26 +279,26 @@ def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, bi
         return (Ea, Eb, ha, hb, ca, cb)
 
 
-def blob_energies(track_graph : Graph, radius : float) -> Tuple[float, float]:
+def blob_energies(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[float, float]:
     """Return the energies around the extrema of the track.
        The largest energy is returned first."""
-    E1, E2, _, _, _, _ = blob_energies_hits_and_centres(track_graph, radius)
+    E1, E2, _, _, _, _ = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return E1, E2
 
 
-def blob_energies_and_hits(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit]]:
+def blob_energies_and_hits(track_graph : Graph, small_radius: float, big_radius : Union[float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit]]:
     """Return the energies and the hits around the extrema of the track.
        The largest energy is returned first, as well as its hits."""
-    E1, E2, h1, h2, _, _ = blob_energies_hits_and_centres(track_graph, radius)
+    E1, E2, h1, h2, _, _ = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return (E1, E2, h1, h2)
 
 
-def blob_centres(track_graph : Graph, radius : float) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_centres(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the positions of the blobs.
        The blob of largest energy is returned first."""
-    _, _, _, _, c1, c2 = blob_energies_hits_and_centres(track_graph, radius)
+    _, _, _, _, c1, c2 = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return (c1, c2)
 
@@ -314,8 +314,8 @@ def make_tracks(evt_number       : float,
     tc = TrackCollection(evt_number, evt_time) # type: TrackCollection
     track_graphs = make_track_graphs(voxels, contiguity) # type: Sequence[Graph]
     for trk in track_graphs:
-        energy_a, energy_b, hits_a, hits_b = blob_energies_and_hits(trk, blob_radius)
-        a, b                               = blob_centres(trk, blob_radius)
+        energy_a, energy_b, hits_a, hits_b = blob_energies_and_hits(trk, blob_radius, None)
+        a, b                               = blob_centres(trk, blob_radius, None)
         blob_a = Blob(a, hits_a, blob_radius, energy_type) # type: Blob
         blob_b = Blob(b, hits_b, blob_radius, energy_type)
         blobs = (blob_a, blob_b)

@@ -32,6 +32,7 @@ from networkx.generators.random_graphs import fast_gnp_random_graph
 from .. evm.event_model import Voxel
 
 from . paolina_functions import bounding_box
+from . paolina_functions import find_highest_encapsulating_node
 from . paolina_functions import round_hits_positions_in_place
 from . paolina_functions import energy_of_voxels_within_radius
 from . paolina_functions import find_extrema
@@ -852,3 +853,57 @@ def test_make_voxel_graph_keeps_energy_consistence(hits, voxel_dimensions):
     tracks = make_track_graphs(voxels)
     # assert sum of track energy equal to sum of hits energies
     assert_almost_equal(sum(get_track_energy(track) for track in tracks), hits.E.sum())
+
+
+def test_encapsulation_works_as_intended():
+    '''
+    test to ensure that setting a big/small radius
+    has the desired effect (capturing the most favourable
+    voxel for energy capture).
+    '''
+
+    # define general parameters
+    vox_size        = [1., 1., 1.]
+    strict_vox_size = True
+    big_radius = 2.83  # sqrt of 8    --> next to nearest neighbours in 2D
+    small_radius = 1.8 # sqrt of 3    --> nearest neighbours in 3D
+
+    # generate hits to make a track
+    x = [-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5, -4.5, -3.5, 3.5, 4.5, 5.5, 4.5, 5.5, -3.5, -2.5, 4.5]
+    y = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, -0.5, -0.5, -0.5]
+    z = np.zeros(shape = len(x))
+    E = np.ones( shape = len(x))
+
+    # reshape
+    hits = []
+    for _x, _y, _z, _E in zip(x, y, z, E):
+        hits.append([0, 1, _x, _y, _z, 1, _E, _E])
+
+    hits_df = pd.DataFrame(hits, columns = ['event', 'npeak', 'X', 'Y', 'Z', 'Q', 'E', 'Ep'])
+
+    voxels  = voxelize_hits(hits_df, vox_size, strict_vox_size, HitEnergy.Ep)
+
+    tracks  = sorted(make_track_graphs(voxels), key = get_track_energy, reverse = True)
+
+    # extract blob energies & positions in both cases
+    a, b = find_extrema(tracks[0])
+    ca = blob_centre(a)
+    cb = blob_centre(b)
+    a_recalced = find_highest_encapsulating_node(tracks[0], a, big_radius, small_radius)
+    b_recalced = find_highest_encapsulating_node(tracks[0], b, big_radius, small_radius)
+    ca_recalced = blob_centre(a_recalced)
+    cb_recalced = blob_centre(b_recalced)
+
+    # ensure old extremes are where you expect
+    assert a.XYZ          == approx((-4, 1, 0), abs=1e-9)
+    assert b.XYZ          == approx(( 5, 2, 0), abs=1e-9)
+    # and centres calculated from them
+    assert ca             == approx((-4.5, 1, 0), abs=1e-9)
+    assert cb             == approx(( 5.5, 2.5, 0), abs=1e-9)
+
+    # find the central voxels
+    assert a_recalced.XYZ == approx((-3, 0, 0), abs=1e-9)
+    assert b_recalced.XYZ == approx(( 4, 1, 0), abs=1e-9)
+    # and the recalculated centres based on hit position
+    assert ca_recalced    == approx((-3.5, -0.5, 0), abs=1e-9)
+    assert cb_recalced    == approx(( 4.5, 1,    0), abs=1e-9)

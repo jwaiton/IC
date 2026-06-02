@@ -18,6 +18,8 @@ from .. core            import system_of_units as units
 from .. types.symbols   import Contiguity
 from .. types.symbols   import HitEnergy
 
+from .. types.ic_types  import NoneType
+
 from typing import Sequence
 from typing import List
 from typing import Tuple
@@ -242,24 +244,33 @@ def find_highest_encapsulating_node( track   : Graph
     return highest_encapsulating_node
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, big_radius : [float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        For each pair of observables, the one of the blob of largest energy is returned first."""
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
-    ha = hits_in_blob(track_graph, radius, a)
-    hb = hits_in_blob(track_graph, radius, b)
+
+
+    if big_radius is None:
+        ha = hits_in_blob(track_graph, small_radius, a)
+        hb = hits_in_blob(track_graph, small_radius, b)
+        ca = blob_centre(a)
+        cb = blob_centre(b)
+    else:
+        va_highE = find_highest_encapsulating_node(track_graph, a, big_radius, small_radius)
+        vb_highE = find_highest_encapsulating_node(track_graph, b, big_radius, small_radius)
+
+        ha = hits_in_blob(track_graph, small_radius, va_highE)
+        hb = hits_in_blob(track_graph, small_radius, vb_highE)
+        ca = blob_centre(va_highE)
+        cb = blob_centre(vb_highE)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype
-
     # Consider the case where voxels are built without associated hits
     some_hits = len(ha) or len(hb)
-    Ea = ha[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[a], radius)
-    Eb = hb[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[b], radius)
-
-    ca = blob_centre(a)
-    cb = blob_centre(b)
+    Ea = ha[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[a], small_radius)
+    Eb = hb[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[b], small_radius)
 
     if Eb > Ea:
         return (Eb, Ea, hb, ha, cb, ca)

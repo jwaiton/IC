@@ -1460,6 +1460,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
                                       energy_threshold : float                     ,
                                       min_voxels       : int                       ,
                                       blob_radius      : float                     ,
+                                      scan_radius      : Union[float, NoneType]    ,
                                       max_num_hits     : int
                                      ) -> Callable:
     """
@@ -1535,7 +1536,7 @@ def track_blob_info_creator_extractor(vox_size         : Tuple[float, float, flo
             extr1_pos = extr1.XYZ
             extr2_pos = extr2.XYZ
 
-            e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius)
+            e_blob1, e_blob2, hits_blob1, hits_blob2, blob_pos1, blob_pos2 = plf.blob_energies_hits_and_centres(t, blob_radius, scan_radius)
 
             common_hits = hits_blob1.merge(hits_blob2, how="inner")
             overlap     = common_hits.Ep.sum()

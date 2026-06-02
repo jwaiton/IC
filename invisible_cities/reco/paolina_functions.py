@@ -24,6 +24,7 @@ from typing import Sequence
 from typing import List
 from typing import Tuple
 from typing import Dict
+from typing import Union
 
 def bounding_box(hits: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -244,7 +245,7 @@ def find_highest_encapsulating_node( track   : Graph
     return highest_encapsulating_node
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, big_radius : [float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        For each pair of observables, the one of the blob of largest energy is returned first."""
     distances = shortest_paths(track_graph)

@@ -464,6 +464,7 @@ def esmeralda_config(Th228_hits, next100_mc_krmap):
                       energy_threshold = 20 * units.keV     ,
                       min_voxels       = 3                  ,
                       blob_radius      = 21 * units.mm      ,
+                      scan_radius      = None               ,
           	      max_num_hits     = 30000              )
                  , corrections = dict(
                       filename   = next100_mc_krmap,

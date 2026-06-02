@@ -224,6 +224,24 @@ def hits_in_blob(track_graph : Graph,
     return pd.concat(blob_hits, ignore_index=True)
 
 
+def find_highest_encapsulating_node( track   : Graph
+                                   , extreme : Voxel
+                                   , big_radius    : float
+                                   , small_radius  : float) -> Tuple[Voxel, dict]:
+    """
+    Find the voxel within a big radius for which the most energy
+    is captured within an equivalent smaller radius.
+    """
+    distances = shortest_paths(track)
+    nodes_within_radius = [node for node in track.nodes if distances[extreme][node] <= big_radius]
+
+    def energy_within_radius(node):
+        return energy_of_voxels_within_radius(distances[node], small_radius)
+
+    highest_encapsulating_node = max(nodes_within_radius, key=energy_within_radius)
+    return highest_encapsulating_node
+
+
 def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
        For each pair of observables, the one of the blob of largest energy is returned first."""

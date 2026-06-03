@@ -245,9 +245,20 @@ def find_highest_encapsulating_node( track         : Graph
     return highest_encapsulating_node
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_energies_hits_and_centres(track_graph  : Graph,
+                                   small_radius : float,
+                                   big_radius   : Union[float, NoneType]
+                                   ) -> Tuple[float,
+                                              float,
+                                              Sequence[BHit],
+                                              Sequence[BHit],
+                                              Tuple[float, float, float],
+                                              Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
-       For each pair of observables, the one of the blob of largest energy is returned first."""
+       For each pair of observables, the one of the blob of largest energy is returned first.
+
+       If a big_radius is provided, the blob centre is chosen to be the voxel within the big
+       radius of the extrema that contains the most energy around it within the small_radius."""
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
 

@@ -251,20 +251,14 @@ def blob_energies_hits_and_centres(track_graph : Graph, small_radius : float, bi
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
 
+    if big_radius is not None:
+        a = find_highest_encapsulating_node(track_graph, a, distances, big_radius, small_radius)
+        b = find_highest_encapsulating_node(track_graph, b, distances, big_radius, small_radius)
 
-    if big_radius is None:
-        ha = hits_in_blob(track_graph, small_radius, a)
-        hb = hits_in_blob(track_graph, small_radius, b)
-        ca = blob_centre(a)
-        cb = blob_centre(b)
-    else:
-        va_highE = find_highest_encapsulating_node(track_graph, a, distances, big_radius, small_radius)
-        vb_highE = find_highest_encapsulating_node(track_graph, b, distances, big_radius, small_radius)
-
-        ha = hits_in_blob(track_graph, small_radius, va_highE)
-        hb = hits_in_blob(track_graph, small_radius, vb_highE)
-        ca = blob_centre(va_highE)
-        cb = blob_centre(vb_highE)
+    ha = hits_in_blob(track_graph, small_radius, a)
+    hb = hits_in_blob(track_graph, small_radius, b)
+    ca = blob_centre(a)
+    cb = blob_centre(b)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype

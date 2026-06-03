@@ -875,11 +875,7 @@ def test_encapsulation_works_as_intended():
     E = np.ones( shape = len(x))
 
     # reshape
-    hits = []
-    for _x, _y, _z, _E in zip(x, y, z, E):
-        hits.append([0, 1, _x, _y, _z, 1, _E, _E])
-
-    hits_df   = pd.DataFrame(hits, columns = ['event', 'npeak', 'X', 'Y', 'Z', 'Q', 'E', 'Ep'])
+    hits_df = pd.DataFrame(dict(event=0, npeak=1, X=x, Y=y, Z=z, Q=1, E=E, Ep=E))
 
     voxels    = voxelize_hits(hits_df, vox_size, strict_vox_size, HitEnergy.Ep)
 

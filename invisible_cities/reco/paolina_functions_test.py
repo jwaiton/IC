@@ -879,18 +879,19 @@ def test_encapsulation_works_as_intended():
     for _x, _y, _z, _E in zip(x, y, z, E):
         hits.append([0, 1, _x, _y, _z, 1, _E, _E])
 
-    hits_df = pd.DataFrame(hits, columns = ['event', 'npeak', 'X', 'Y', 'Z', 'Q', 'E', 'Ep'])
+    hits_df   = pd.DataFrame(hits, columns = ['event', 'npeak', 'X', 'Y', 'Z', 'Q', 'E', 'Ep'])
 
-    voxels  = voxelize_hits(hits_df, vox_size, strict_vox_size, HitEnergy.Ep)
+    voxels    = voxelize_hits(hits_df, vox_size, strict_vox_size, HitEnergy.Ep)
 
-    tracks  = sorted(make_track_graphs(voxels), key = get_track_energy, reverse = True)
+    tracks    = sorted(make_track_graphs(voxels), key = get_track_energy, reverse = True)
 
+    distances = shortest_paths(tracks[0])
     # extract blob energies & positions in both cases
     a, b = find_extrema(tracks[0])
     ca = blob_centre(a)
     cb = blob_centre(b)
-    a_recalced = find_highest_encapsulating_node(tracks[0], a, big_radius, small_radius)
-    b_recalced = find_highest_encapsulating_node(tracks[0], b, big_radius, small_radius)
+    a_recalced = find_highest_encapsulating_node(tracks[0], a, distances, big_radius, small_radius)
+    b_recalced = find_highest_encapsulating_node(tracks[0], b, distances, big_radius, small_radius)
     ca_recalced = blob_centre(a_recalced)
     cb_recalced = blob_centre(b_recalced)
 

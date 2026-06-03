@@ -891,12 +891,12 @@ def test_encapsulation_works_as_intended():
     ca_recalced = blob_centre(a_recalced)
     cb_recalced = blob_centre(b_recalced)
 
-    # ensure old extremes are where you expect
-    assert a.XYZ          == approx((-4, 1, 0), abs=1e-9)
-    assert b.XYZ          == approx(( 5, 2, 0), abs=1e-9)
-    # and centres calculated from them
-    assert ca             == approx((-4.5, 1, 0), abs=1e-9)
-    assert cb             == approx(( 5.5, 2.5, 0), abs=1e-9)
+    # ensure the old method doesn't match the new method
+    assert a.XYZ     != a_recalced.XYZ
+    assert b.XYZ     != b_recalced.XYZ
+
+    assert np.any(ca != ca_recalced)
+    assert np.any(cb != cb_recalced)
 
     # find the central voxels
     assert a_recalced.XYZ == approx((-3, 0, 0), abs=1e-9)

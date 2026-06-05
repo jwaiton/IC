@@ -32,6 +32,7 @@ from networkx.generators.random_graphs import fast_gnp_random_graph
 from .. evm.event_model import Voxel
 
 from . paolina_functions import bounding_box
+from . paolina_functions import find_highest_encapsulating_node
 from . paolina_functions import round_hits_positions_in_place
 from . paolina_functions import energy_of_voxels_within_radius
 from . paolina_functions import find_extrema
@@ -711,7 +712,7 @@ def test_blobs(radius, expected):
     tracks = make_track_graphs(voxels)
 
     assert len(tracks) == 1
-    assert blob_energies(tracks[0], radius) == expected
+    assert blob_energies(tracks[0], radius, None) == expected
 
 
 @settings(deadline=None)
@@ -720,8 +721,8 @@ def test_blob_hits_are_inside_radius(hits, voxel_dimensions, blob_radius):
     voxels = voxelize_hits(hits, voxel_dimensions)
     tracks = make_track_graphs(voxels)
     for t in tracks:
-        Ea, Eb, hits_a, hits_b   = blob_energies_and_hits(t, blob_radius)
-        centre_a, centre_b       = blob_centres(t, blob_radius)
+        Ea, Eb, hits_a, hits_b   = blob_energies_and_hits(t, blob_radius, None)
+        centre_a, centre_b       = blob_centres(t, blob_radius, None)
 
         assert all(np.linalg.norm(hits_a["X Y Z".split()] - centre_a, axis=1) < blob_radius)
         assert all(np.linalg.norm(hits_b["X Y Z".split()] - centre_b, axis=1) < blob_radius)
@@ -746,15 +747,15 @@ def test_paolina_functions_with_voxels_without_associated_hits(blob_radius, min_
         Eb = energy_of_voxels_within_radius(distances[b], blob_radius)
 
         if Ea < Eb:
-            assert np.allclose(blob_centres(t, blob_radius)[0], b.pos)
-            assert np.allclose(blob_centres(t, blob_radius)[1], a.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[0], b.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[1], a.pos)
         else:
-            assert np.allclose(blob_centres(t, blob_radius)[0], a.pos)
-            assert np.allclose(blob_centres(t, blob_radius)[1], b.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[0], a.pos)
+            assert np.allclose(blob_centres(t, blob_radius, None)[1], b.pos)
 
-        assert blob_energies(t, blob_radius) != (0, 0)
+        assert blob_energies(t, blob_radius, None) != (0, 0)
 
-        assert blob_energies_and_hits(t, blob_radius) != (0, 0, [], [])
+        assert blob_energies_and_hits(t, blob_radius, None) != (0, 0, [], [])
 
     energies = [v.E for v in voxels]
     e_thr = min(energies) + fraction_zero_one * (max(energies) - min(energies))
@@ -843,7 +844,7 @@ def test_make_tracks_function(ICDATADIR):
             tc_blobs.sort(key=lambda x : x.E)
             tc_blob_energies = (tc.blobs[0].E, tc.blobs[1].E)
 
-            assert np.allclose(blob_energies(t, blob_radius), tc_blob_energies)
+            assert np.allclose(blob_energies(t, blob_radius, None), tc_blob_energies)
 
 
 @given(bunch_of_hits(), box_sizes)
@@ -852,3 +853,54 @@ def test_make_voxel_graph_keeps_energy_consistence(hits, voxel_dimensions):
     tracks = make_track_graphs(voxels)
     # assert sum of track energy equal to sum of hits energies
     assert_almost_equal(sum(get_track_energy(track) for track in tracks), hits.E.sum())
+
+
+def test_encapsulation_works_as_intended():
+    '''
+    test to ensure that setting a big/small radius
+    has the desired effect (capturing the most favourable
+    voxel for energy capture).
+    '''
+
+    # define general parameters
+    vox_size        = [1., 1., 1.]
+    strict_vox_size = True
+    big_radius = 2.83  # sqrt of 8    --> next to nearest neighbours in 2D
+    small_radius = 1.8 # sqrt of 3    --> nearest neighbours in 3D
+
+    # generate hits to make a track
+    x = [-4.5, -3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5, 4.5, -4.5, -3.5, 3.5, 4.5, 5.5, 4.5, 5.5, -3.5, -2.5, 4.5]
+    y = [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.5, 1.5, 1.5, 1.5, 1.5, 2.5, 2.5, -0.5, -0.5, -0.5]
+    z = np.zeros(shape = len(x))
+    E = np.ones( shape = len(x))
+
+    # reshape
+    hits_df = pd.DataFrame(dict(event=0, npeak=1, X=x, Y=y, Z=z, Q=1, E=E, Ep=E))
+
+    voxels    = voxelize_hits(hits_df, vox_size, strict_vox_size, HitEnergy.Ep)
+
+    tracks    = sorted(make_track_graphs(voxels), key = get_track_energy, reverse = True)
+
+    distances = shortest_paths(tracks[0])
+    # extract blob energies & positions in both cases
+    a, b = find_extrema(tracks[0])
+    ca = blob_centre(a)
+    cb = blob_centre(b)
+    a_recalced = find_highest_encapsulating_node(tracks[0], a, distances, big_radius, small_radius)
+    b_recalced = find_highest_encapsulating_node(tracks[0], b, distances, big_radius, small_radius)
+    ca_recalced = blob_centre(a_recalced)
+    cb_recalced = blob_centre(b_recalced)
+
+    # ensure the old method doesn't match the new method
+    assert a.XYZ     != a_recalced.XYZ
+    assert b.XYZ     != b_recalced.XYZ
+
+    assert np.any(ca != ca_recalced)
+    assert np.any(cb != cb_recalced)
+
+    # find the central voxels
+    assert a_recalced.XYZ == approx((-3, 0, 0), abs=1e-9)
+    assert b_recalced.XYZ == approx(( 4, 1, 0), abs=1e-9)
+    # and the recalculated centres based on hit position
+    assert ca_recalced    == approx((-3.5, -0.5, 0), abs=1e-9)
+    assert cb_recalced    == approx(( 4.5, 1,    0), abs=1e-9)

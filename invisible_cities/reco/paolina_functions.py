@@ -18,10 +18,13 @@ from .. core            import system_of_units as units
 from .. types.symbols   import Contiguity
 from .. types.symbols   import HitEnergy
 
+from .. types.ic_types  import NoneType
+
 from typing import Sequence
 from typing import List
 from typing import Tuple
 from typing import Dict
+from typing import Union
 
 def bounding_box(hits: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -224,24 +227,56 @@ def hits_in_blob(track_graph : Graph,
     return pd.concat(blob_hits, ignore_index=True)
 
 
-def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit], Tuple[float, float, float], Tuple[float, float, float]]:
+def find_highest_encapsulating_node( track         : Graph
+                                   , extreme       : Voxel
+                                   , distances     : Dict[Voxel, Dict[Voxel, float]]
+                                   , big_radius    : float
+                                   , small_radius  : float) -> Tuple[Voxel, dict]:
+    """
+    Find the voxel within a big radius for which the most energy
+    is captured within an equivalent smaller radius.
+    """
+    nodes_within_radius = [node for node in track.nodes if distances[extreme][node] <= big_radius]
+
+    def energy_within_radius(node):
+        return energy_of_voxels_within_radius(distances[node], small_radius)
+
+    highest_encapsulating_node = max(nodes_within_radius, key=energy_within_radius)
+    return highest_encapsulating_node
+
+
+def blob_energies_hits_and_centres(track_graph  : Graph,
+                                   small_radius : float,
+                                   big_radius   : Union[float, NoneType]
+                                   ) -> Tuple[float,
+                                              float,
+                                              Sequence[BHit],
+                                              Sequence[BHit],
+                                              Tuple[float, float, float],
+                                              Tuple[float, float, float]]:
     """Return the energies, the hits and the positions of the blobs.
-       For each pair of observables, the one of the blob of largest energy is returned first."""
+       For each pair of observables, the one of the blob of largest energy is returned first.
+
+       If a big_radius is provided, the blob centre is chosen to be the voxel within the big
+       radius of the extrema that contains the most energy around it within the small_radius."""
     distances = shortest_paths(track_graph)
     a, b, _   = find_extrema_and_length(distances)
-    ha = hits_in_blob(track_graph, radius, a)
-    hb = hits_in_blob(track_graph, radius, b)
+
+    if big_radius is not None:
+        a = find_highest_encapsulating_node(track_graph, a, distances, big_radius, small_radius)
+        b = find_highest_encapsulating_node(track_graph, b, distances, big_radius, small_radius)
+
+    ha = hits_in_blob(track_graph, small_radius, a)
+    hb = hits_in_blob(track_graph, small_radius, b)
+    ca = blob_centre(a)
+    cb = blob_centre(b)
 
     voxels = list(track_graph.nodes())
     e_type = voxels[0].Etype
-
     # Consider the case where voxels are built without associated hits
     some_hits = len(ha) or len(hb)
-    Ea = ha[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[a], radius)
-    Eb = hb[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[b], radius)
-
-    ca = blob_centre(a)
-    cb = blob_centre(b)
+    Ea = ha[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[a], small_radius)
+    Eb = hb[e_type].sum() if some_hits else energy_of_voxels_within_radius(distances[b], small_radius)
 
     if Eb > Ea:
         return (Eb, Ea, hb, ha, cb, ca)
@@ -249,26 +284,26 @@ def blob_energies_hits_and_centres(track_graph : Graph, radius : float) -> Tuple
         return (Ea, Eb, ha, hb, ca, cb)
 
 
-def blob_energies(track_graph : Graph, radius : float) -> Tuple[float, float]:
+def blob_energies(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[float, float]:
     """Return the energies around the extrema of the track.
        The largest energy is returned first."""
-    E1, E2, _, _, _, _ = blob_energies_hits_and_centres(track_graph, radius)
+    E1, E2, _, _, _, _ = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return E1, E2
 
 
-def blob_energies_and_hits(track_graph : Graph, radius : float) -> Tuple[float, float, Sequence[BHit], Sequence[BHit]]:
+def blob_energies_and_hits(track_graph : Graph, small_radius: float, big_radius : Union[float, NoneType]) -> Tuple[float, float, Sequence[BHit], Sequence[BHit]]:
     """Return the energies and the hits around the extrema of the track.
        The largest energy is returned first, as well as its hits."""
-    E1, E2, h1, h2, _, _ = blob_energies_hits_and_centres(track_graph, radius)
+    E1, E2, h1, h2, _, _ = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return (E1, E2, h1, h2)
 
 
-def blob_centres(track_graph : Graph, radius : float) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
+def blob_centres(track_graph : Graph, small_radius : float, big_radius : Union[float, NoneType]) -> Tuple[Tuple[float, float, float], Tuple[float, float, float]]:
     """Return the positions of the blobs.
        The blob of largest energy is returned first."""
-    _, _, _, _, c1, c2 = blob_energies_hits_and_centres(track_graph, radius)
+    _, _, _, _, c1, c2 = blob_energies_hits_and_centres(track_graph, small_radius, big_radius)
 
     return (c1, c2)
 
@@ -284,8 +319,8 @@ def make_tracks(evt_number       : float,
     tc = TrackCollection(evt_number, evt_time) # type: TrackCollection
     track_graphs = make_track_graphs(voxels, contiguity) # type: Sequence[Graph]
     for trk in track_graphs:
-        energy_a, energy_b, hits_a, hits_b = blob_energies_and_hits(trk, blob_radius)
-        a, b                               = blob_centres(trk, blob_radius)
+        energy_a, energy_b, hits_a, hits_b = blob_energies_and_hits(trk, blob_radius, None)
+        a, b                               = blob_centres(trk, blob_radius, None)
         blob_a = Blob(a, hits_a, blob_radius, energy_type) # type: Blob
         blob_b = Blob(b, hits_b, blob_radius, energy_type)
         blobs = (blob_a, blob_b)

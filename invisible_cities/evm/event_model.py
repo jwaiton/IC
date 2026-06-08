@@ -8,6 +8,7 @@ from .. types.ic_types import NN
 from .. types.ic_types import xy
 from .. types.symbols  import HitEnergy
 from .. core           import system_of_units as units
+from .. core.core_functions import overflow_protection
 
 from typing import List
 from typing import Tuple
@@ -291,11 +292,11 @@ class HitCollection(Event):
     def store(self, table):
         row = table.row
 
-        overflow_protection = np.iinfo(np.uint16).max
+        u16max = np.iinfo(np.uint16).max
         for hit in self.hits:
             row["event"   ] = self.event
             row["time"    ] = self.time
-            row["npeak"   ] = min(hit.npeak, overflow_protection)
+            row["npeak"   ] = overflow_protection(hit.npeak, u16max, "HitCollection::store (npeak)")
             row["Xpeak"   ] = hit .Xpeak
             row["Ypeak"   ] = hit .Ypeak
             row["X"       ] = hit .X
@@ -364,7 +365,7 @@ class KrEvent(Event):
     def store(self, table):
         row = table.row
 
-        overflow_protection = np.iinfo(np.uint16).max
+        u16max = np.iinfo(np.uint16).max
         s1_peaks = range(int(self.nS1)) if self.nS1 else [0]
         s2_peaks = range(int(self.nS2)) if self.nS2 else [0]
         self.fill_defaults()
@@ -373,8 +374,8 @@ class KrEvent(Event):
             for j in s2_peaks:
                 row["event"  ] = self.event
                 row["time"   ] = self.time
-                row["s1_peak"] = min(i, overflow_protection) if self.nS1 else overflow_protection
-                row["s2_peak"] = min(j, overflow_protection) if self.nS2 else overflow_protection
+                row["s1_peak"] = overflow_protection(i, u16max, "KrEvent::store (s1_peak)") if self.nS1 else u16max
+                row["s2_peak"] = overflow_protection(j, u16max, "KrEvent::store (s2_peak)") if self.nS2 else u16max
                 row["nS1"    ] = self.nS1
                 row["nS2"    ] = self.nS2
 

@@ -9,6 +9,7 @@ import numpy.testing as npt
 from pytest import approx
 from pytest import mark
 from pytest import raises
+from pytest import warns
 
 from flaky                  import flaky
 from hypothesis             import given
@@ -412,3 +413,22 @@ def test_fix_random_seed_resets():
     assert not np.isclose(value1, value2)
     assert     np.isclose(value1, value3)
     assert not np.isclose(value2, value3)
+
+
+@mark.parametrize(" value upper".split(),
+                  ((  5,  10),
+                   ( 10,  10),
+                   (2.5, 3.0)))
+def test_overflow_protection_keeps_values_not_above_limit(value, upper):
+    assert core.overflow_protection(value, upper, "test") == value
+
+
+def test_overflow_protection_clips_and_warns():
+    upper  = 10
+    origin = "test table"
+    match  = f"Overflow detected at {origin}, clipping the value to {upper}"
+
+    with warns(UserWarning, match=match):
+        got = core.overflow_protection(11, upper, origin)
+
+    assert got == upper
